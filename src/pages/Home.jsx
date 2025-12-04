@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSnackbar } from 'notistack';
-import { Search, Ticket, ScanLine } from 'lucide-react';
+import { Search, Ticket, ScanLine, X } from 'lucide-react';
 import ProductCard from '../components/pos/ProductCard';
 import CategoryFilter from '../components/pos/CategoryFilter';
 import Cart from '../components/pos/Cart';
@@ -57,10 +57,8 @@ const Home = () => {
         setIsBillModalOpen(false);
         setIsSuccessModalOpen(true);
         setCartItems([]);
-        setIsSuccessModalOpen(true);
-        setCartItems([]);
         setSelectedCustomer(null);
-        setSelectedVoucher(null);
+        // Keep voucher selected for next transaction
     };
 
     const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -86,8 +84,6 @@ const Home = () => {
                 {/* Top Actions */}
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex-1 max-w-md">
-                        {/* Search is in Header, but screenshot shows another search or maybe just title? 
-                 Actually screenshot 5 shows "Search medicine" input and buttons. */}
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             <input
@@ -132,7 +128,6 @@ const Home = () => {
                     </div>
                     <button className="text-green-600 text-sm font-medium hover:underline">See all</button>
                 </div>
-                {/* Actually screenshot shows a card for Customer2 inside. I'll skip detailed waitlist here for now to focus on POS grid */}
 
                 {/* Categories & Grid */}
                 <div className="flex justify-between items-center mb-4">
@@ -198,6 +193,7 @@ const Home = () => {
                 isOpen={isVoucherModalOpen}
                 onClose={() => setIsVoucherModalOpen(false)}
                 onSelectVoucher={setSelectedVoucher}
+                currentVoucher={selectedVoucher}
             />
         </div>
     );

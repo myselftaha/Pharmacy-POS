@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Ticket, Calendar, DollarSign } from 'lucide-react';
 
-const VoucherSelectionModal = ({ isOpen, onClose, onSelectVoucher }) => {
+const VoucherSelectionModal = ({ isOpen, onClose, onSelectVoucher, currentVoucher }) => {
     const [vouchers, setVouchers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
@@ -44,6 +44,11 @@ const VoucherSelectionModal = ({ isOpen, onClose, onSelectVoucher }) => {
         onClose();
     };
 
+    const handleRemoveVoucher = () => {
+        onSelectVoucher(null);
+        onClose();
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -51,13 +56,30 @@ const VoucherSelectionModal = ({ isOpen, onClose, onSelectVoucher }) => {
             <div className="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-gray-100">
-                    <h2 className="text-xl font-bold text-gray-800">Select Voucher</h2>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                        <X size={24} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-xl font-bold text-gray-800">Select Voucher</h2>
+                        {currentVoucher && (
+                            <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
+                                Current: {currentVoucher.code}
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {currentVoucher && (
+                            <button
+                                onClick={handleRemoveVoucher}
+                                className="px-4 py-2 bg-red-50 border border-red-200 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-colors text-sm"
+                            >
+                                Remove Voucher
+                            </button>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                            <X size={24} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Search */}
