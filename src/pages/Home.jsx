@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSnackbar } from 'notistack';
 import { Search, Ticket, ScanLine, X } from 'lucide-react';
 import ProductCard from '../components/pos/ProductCard';
@@ -12,15 +12,47 @@ import { medicines, categories } from '../data/mockData';
 
 const Home = () => {
     const [activeCategory, setActiveCategory] = useState('All');
-    const [cartItems, setCartItems] = useState([]);
+    const [cartItems, setCartItems] = useState(() => {
+        const saved = localStorage.getItem('cartItems');
+        return saved ? JSON.parse(saved) : [];
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
     const [isAttachCustomerModalOpen, setIsAttachCustomerModalOpen] = useState(false);
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
     const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-    const [selectedCustomer, setSelectedCustomer] = useState(null);
-    const [selectedVoucher, setSelectedVoucher] = useState(null);
+    const [selectedCustomer, setSelectedCustomer] = useState(() => {
+        const saved = localStorage.getItem('selectedCustomer');
+        return saved ? JSON.parse(saved) : null;
+    });
+    const [selectedVoucher, setSelectedVoucher] = useState(() => {
+        const saved = localStorage.getItem('selectedVoucher');
+        return saved ? JSON.parse(saved) : null;
+    });
     const { enqueueSnackbar } = useSnackbar();
+
+    // Persist cart items to localStorage
+    useEffect(() => {
+        localStorage.setItem('cartItems', JSON.stringify(cartItems));
+    }, [cartItems]);
+
+    // Persist selected customer to localStorage
+    useEffect(() => {
+        if (selectedCustomer) {
+            localStorage.setItem('selectedCustomer', JSON.stringify(selectedCustomer));
+        } else {
+            localStorage.removeItem('selectedCustomer');
+        }
+    }, [selectedCustomer]);
+
+    // Persist selected voucher to localStorage
+    useEffect(() => {
+        if (selectedVoucher) {
+            localStorage.setItem('selectedVoucher', JSON.stringify(selectedVoucher));
+        } else {
+            localStorage.removeItem('selectedVoucher');
+        }
+    }, [selectedVoucher]);
 
     const filteredMedicines = medicines.filter(med => {
         const matchesCategory = activeCategory === 'All' || med.category === activeCategory;
