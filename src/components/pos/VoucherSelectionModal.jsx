@@ -127,7 +127,7 @@ const VoucherSelectionModal = ({ isOpen, onClose, onSelectVoucher, currentVouche
                                                 </div>
                                                 <div className="flex items-center gap-1">
                                                     <DollarSign size={12} />
-                                                    <span>Min. spend ${voucher.minPurchase}</span>
+                                                    <span>Min. spend Rs. {voucher.minPurchase}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -136,7 +136,7 @@ const VoucherSelectionModal = ({ isOpen, onClose, onSelectVoucher, currentVouche
                                         <div className="text-xl font-bold text-green-600">
                                             {voucher.discountType === 'Percentage'
                                                 ? `${voucher.discountValue}% OFF`
-                                                : `$${voucher.discountValue} OFF`}
+                                                : `Rs. ${voucher.discountValue} OFF`}
                                         </div>
                                         <button className="mt-2 px-4 py-1 bg-green-500 text-white text-sm rounded-lg font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                                             Apply

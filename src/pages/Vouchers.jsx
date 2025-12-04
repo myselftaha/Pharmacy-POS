@@ -229,12 +229,12 @@ const Vouchers = () => {
                                             <span className="font-bold text-green-600">
                                                 {voucher.discountType === 'Percentage'
                                                     ? `${voucher.discountValue}%`
-                                                    : `$${voucher.discountValue}`}
+                                                    : `Rs. ${voucher.discountValue}`}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm text-gray-500">Min. Purchase</span>
-                                            <span className="font-medium text-gray-800">${voucher.minPurchase.toFixed(2)}</span>
+                                            <span className="font-medium text-gray-800">Rs. {voucher.minPurchase.toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm text-gray-500">Usage</span>

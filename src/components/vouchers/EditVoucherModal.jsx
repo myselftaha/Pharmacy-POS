@@ -148,7 +148,7 @@ const EditVoucherModal = ({ isOpen, onClose, voucher, onSave }) => {
                                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
                             >
                                 <option value="Percentage">Percentage (%)</option>
-                                <option value="Fixed">Fixed Amount ($)</option>
+                                <option value="Fixed">Fixed Amount (Rs.)</option>
                             </select>
                         </div>
                         <div>
@@ -171,7 +171,7 @@ const EditVoucherModal = ({ isOpen, onClose, voucher, onSave }) => {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Min. Purchase ($)
+                                Min. Purchase (Rs.)
                             </label>
                             <input
                                 type="number"
@@ -184,7 +184,7 @@ const EditVoucherModal = ({ isOpen, onClose, voucher, onSave }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Max Discount ($)
+                                Max Discount (Rs.)
                             </label>
                             <input
                                 type="number"

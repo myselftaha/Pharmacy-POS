@@ -54,7 +54,7 @@ const ApplyVoucherModal = ({ isOpen, onClose, onApply, cartTotal }) => {
             const data = await response.json();
 
             if (response.ok) {
-                setSuccess(`Voucher applied! Discount: $${data.discountAmount.toFixed(2)}`);
+                setSuccess(`Voucher applied! Discount: Rs. ${data.discountAmount.toFixed(2)}`);
                 setTimeout(() => {
                     onApply(data.voucher, data.discountAmount);
                     onClose();
@@ -152,12 +152,12 @@ const ApplyVoucherModal = ({ isOpen, onClose, onApply, cartTotal }) => {
                                                 {voucher.code}
                                             </span>
                                             <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                                                {voucher.discountType === 'Percentage' ? `${voucher.discountValue}% OFF` : `$${voucher.discountValue} OFF`}
+                                                {voucher.discountType === 'Percentage' ? `${voucher.discountValue}% OFF` : `Rs. ${voucher.discountValue} OFF`}
                                             </span>
                                         </div>
                                         <p className="text-xs text-gray-500 line-clamp-1">{voucher.description}</p>
                                         {voucher.minPurchase > 0 && (
-                                            <p className="text-xs text-gray-400 mt-1">Min. purchase: ${voucher.minPurchase}</p>
+                                            <p className="text-xs text-gray-400 mt-1">Min. purchase: Rs. {voucher.minPurchase}</p>
                                         )}
                                     </div>
                                 ))

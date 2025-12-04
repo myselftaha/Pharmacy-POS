@@ -8,7 +8,7 @@ import Waitlist from './pages/Waitlist';
 import Users from './pages/Users';
 import Customers from './pages/Customers';
 import Vouchers from './pages/Vouchers';
-import Prescriptions from './pages/Prescriptions';
+
 import Settings from './pages/Settings';
 import Community from './pages/Community';
 
@@ -24,7 +24,7 @@ function App() {
           <Route path="users" element={<Users />} />
           <Route path="customers" element={<Customers />} />
           <Route path="vouchers" element={<Vouchers />} />
-          <Route path="prescriptions" element={<Prescriptions />} />
+
           <Route path="settings" element={<Settings />} />
           <Route path="community" element={<Community />} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -20,7 +20,7 @@ const ProductCard = ({ product, onAdd }) => {
             </div>
 
             <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-50">
-                <span className="font-bold text-green-600">${product.price.toFixed(2)}/{product.unit}</span>
+                <span className="font-bold text-green-600">Rs. {product.price.toFixed(2)}/{product.unit}</span>
                 <button
                     onClick={() => onAdd(product)}
                     className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white hover:bg-green-600 transition-colors"

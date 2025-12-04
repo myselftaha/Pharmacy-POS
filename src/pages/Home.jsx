@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSnackbar } from 'notistack';
-import { Search, Ticket, ScanLine, X } from 'lucide-react';
+import { Search, Ticket, X } from 'lucide-react';
 import ProductCard from '../components/pos/ProductCard';
 import CategoryFilter from '../components/pos/CategoryFilter';
 import Cart from '../components/pos/Cart';
@@ -8,7 +8,7 @@ import BillModal from '../components/pos/BillModal';
 import AttachCustomerModal from '../components/pos/AttachCustomerModal';
 import OrderSuccessModal from '../components/pos/OrderSuccessModal';
 import VoucherSelectionModal from '../components/pos/VoucherSelectionModal';
-import { medicines, categories } from '../data/mockData';
+import { categories } from '../data/mockData';
 
 const Home = () => {
     const [activeCategory, setActiveCategory] = useState('All');
@@ -29,7 +29,23 @@ const Home = () => {
         const saved = localStorage.getItem('selectedVoucher');
         return saved ? JSON.parse(saved) : null;
     });
+    const [medicines, setMedicines] = useState([]);
     const { enqueueSnackbar } = useSnackbar();
+
+    // Fetch medicines from database
+    useEffect(() => {
+        const fetchMedicines = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/medicines');
+                const data = await response.json();
+                setMedicines(data);
+            } catch (error) {
+                console.error('Error fetching medicines:', error);
+                setMedicines([]);
+            }
+        };
+        fetchMedicines();
+    }, []);
 
     // Persist cart items to localStorage
     useEffect(() => {
@@ -62,15 +78,17 @@ const Home = () => {
 
     const addToCart = (product) => {
         setCartItems(prev => {
-            const existing = prev.find(item => item.id === product.id);
+            const productId = product._id || product.id;
+            const existing = prev.find(item => (item._id || item.id) === productId);
             if (existing) {
                 return prev.map(item =>
-                    item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+                    (item._id || item.id) === productId ? { ...item, quantity: item.quantity + 1 } : item
                 );
             }
-            return [...prev, { ...product, quantity: 1 }];
+            return [...prev, { ...product, id: productId, quantity: 1 }];
         });
     };
+
 
     const updateQuantity = (id, newQuantity) => {
         if (newQuantity < 1) return;
@@ -83,14 +101,99 @@ const Home = () => {
         setCartItems(prev => prev.filter(item => item.id !== id));
     };
 
-    const handlePrint = () => {
-        window.print();
-        // After print dialog closes (or immediately if non-blocking), show success and clear state
-        setIsBillModalOpen(false);
-        setIsSuccessModalOpen(true);
-        setCartItems([]);
-        setSelectedCustomer(null);
-        // Keep voucher selected for next transaction
+    const handlePrint = async () => {
+        // Validate that all items have valid quantities
+        const invalidItems = cartItems.filter(item => !item.quantity || item.quantity === '' || item.quantity < 1 || isNaN(item.quantity));
+        if (invalidItems.length > 0) {
+            enqueueSnackbar('Please enter valid quantities for all items', { variant: 'error' });
+            console.error('Invalid quantities detected:', invalidItems);
+            return;
+        }
+
+        // Always print the bill, regardless of backend save status
+        try {
+            // Generate transaction ID
+            const transactionId = `#TX${Date.now()}`;
+
+            // Prepare transaction data with clean item objects
+            const transactionData = {
+                transactionId,
+                customer: selectedCustomer ? {
+                    id: selectedCustomer._id,
+                    name: selectedCustomer.name,
+                    email: selectedCustomer.email,
+                    phone: selectedCustomer.phone
+                } : {
+                    name: 'Walk-in'
+                },
+                items: cartItems.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    price: parseFloat(item.price),
+                    quantity: parseInt(item.quantity) || 1,
+                    subtotal: parseFloat(item.price) * (parseInt(item.quantity) || 1)
+                })),
+                subtotal,
+                platformFee,
+                discount: discountAmount,
+                total: cartTotal,
+                voucher: selectedVoucher ? {
+                    id: selectedVoucher._id,
+                    code: selectedVoucher.code,
+                    discountType: selectedVoucher.discountType,
+                    discountValue: selectedVoucher.discountValue
+                } : null,
+                paymentMethod: 'Cash',
+                processedBy: 'Admin'
+            };
+
+            // Try to save transaction to backend (but don't block on failure)
+            try {
+                // Create completely clean object without prototype chain
+                const cleanTransactionData = JSON.parse(JSON.stringify(transactionData));
+
+                console.log('Attempting to save transaction...', cleanTransactionData);
+                const response = await fetch('http://localhost:5000/api/transactions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cleanTransactionData)
+                });
+
+                console.log('Response status:', response.status);
+                const responseData = await response.json();
+                console.log('Response data:', responseData);
+
+                if (response.ok) {
+                    console.log('✅ Transaction saved successfully to database!');
+                    enqueueSnackbar('Transaction saved successfully!', { variant: 'success' });
+                } else {
+                    console.warn('❌ Failed to save transaction:', responseData);
+                    enqueueSnackbar('Warning: Transaction may not have saved', { variant: 'warning' });
+                }
+            } catch (error) {
+                // Backend is not available, continue with print anyway
+                console.error('❌ Backend not available, printing without saving:', error);
+                enqueueSnackbar('Offline mode: Transaction not saved', { variant: 'warning' });
+            }
+
+            // Always proceed with printing
+            window.print();
+
+            // Show success and clear state
+            setIsBillModalOpen(false);
+            setIsSuccessModalOpen(true);
+            setCartItems([]);
+            setSelectedCustomer(null);
+            // Keep voucher selected for next transaction
+
+        } catch (error) {
+            console.error('Error during print process:', error);
+            // Still try to print even if there's an error
+            window.print();
+            setIsBillModalOpen(false);
+            setCartItems([]);
+            setSelectedCustomer(null);
+        }
     };
 
     const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -135,10 +238,6 @@ const Home = () => {
                             <Ticket size={18} />
                             <span>{selectedVoucher ? `Voucher: ${selectedVoucher.code}` : 'Use Voucher'}</span>
                         </button>
-                        <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-200">
-                            <ScanLine size={18} />
-                            <span>Scan Prescription</span>
-                        </button>
                     </div>
                 </div>
 
@@ -175,7 +274,7 @@ const Home = () => {
 
                 <div className="grid grid-cols-3 gap-4 overflow-y-auto pb-4 pr-2">
                     {filteredMedicines.map(product => (
-                        <ProductCard key={product.id} product={product} onAdd={addToCart} />
+                        <ProductCard key={product._id || product.id} product={product} onAdd={addToCart} />
                     ))}
                 </div>
             </div>

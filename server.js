@@ -13,9 +13,9 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect('mongodb://localhost:27017/medkit-pos')
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.log(err));
+mongoose.connect('mongodb+srv://mrtaha09876_db_user:larkana222@pharmacy-pos.kykzsbc.mongodb.net/medkit-pos?retryWrites=true&w=majority&appName=Pharmacy-POS')
+    .then(() => console.log('MongoDB Atlas Connected Successfully'))
+    .catch(err => console.log('MongoDB Connection Error:', err));
 
 // Medicine Schema
 const medicineSchema = new mongoose.Schema({
@@ -64,7 +64,40 @@ const voucherSchema = new mongoose.Schema({
 
 const Voucher = mongoose.model('Voucher', voucherSchema);
 
+// Transaction Schema
+const transactionSchema = new mongoose.Schema({
+    transactionId: { type: String, required: true, unique: true },
+    customer: {
+        id: String,
+        name: { type: String, required: true },
+        email: String,
+        phone: String
+    },
+    items: [{
+        id: String,
+        name: String,
+        price: Number,
+        quantity: Number,
+        subtotal: Number
+    }],
+    subtotal: { type: Number, required: true },
+    platformFee: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
+    total: { type: Number, required: true },
+    voucher: {
+        code: String,
+        discountType: String,
+        discountValue: Number
+    },
+    paymentMethod: { type: String, default: 'Cash' },
+    processedBy: { type: String, default: 'Admin' },
+    createdAt: { type: Date, default: Date.now }
+});
+
+const Transaction = mongoose.model('Transaction', transactionSchema);
+
 // Routes
+
 
 // Get all medicines
 app.get('/api/medicines', async (req, res) => {
@@ -76,9 +109,84 @@ app.get('/api/medicines', async (req, res) => {
     }
 });
 
-// Get all customers
+// Add new medicine
+app.post('/api/medicines', async (req, res) => {
+    try {
+        const newMedicine = new Medicine(req.body);
+        const savedMedicine = await newMedicine.save();
+        res.status(201).json(savedMedicine);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Update medicine
+app.put('/api/medicines/:id', async (req, res) => {
+    try {
+        const updatedMedicine = await Medicine.findByIdAndUpdate(
+            req.params.id,
+            { $set: req.body },
+            { new: true, runValidators: true }
+        );
+        if (!updatedMedicine) {
+            return res.status(404).json({ message: 'Medicine not found' });
+        }
+        res.json(updatedMedicine);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Delete medicine
+app.delete('/api/medicines/:id', async (req, res) => {
+    try {
+        const deletedMedicine = await Medicine.findByIdAndDelete(req.params.id);
+        if (!deletedMedicine) {
+            return res.status(404).json({ message: 'Medicine not found' });
+        }
+        res.json({ message: 'Medicine deleted successfully', medicine: deletedMedicine });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+// Get all customers with optional date filtering
 app.get('/api/customers', async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        let query = {};
+
+        // Date filtering based on joinDate
+        if (startDate || endDate) {
+            // Note: joinDate is stored as string, need to convert for comparison
+            const customers = await Customer.find();
+
+            const filtered = customers.filter(customer => {
+                if (!customer.joinDate) return true; // Include customers without join date
+
+                // Parse the joinDate string (format: "MMM DD, YYYY")
+                const joinDateObj = new Date(customer.joinDate);
+
+                if (startDate && endDate) {
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+                    end.setHours(23, 59, 59, 999);
+                    return joinDateObj >= start && joinDateObj <= end;
+                } else if (startDate) {
+                    const start = new Date(startDate);
+                    return joinDateObj >= start;
+                } else if (endDate) {
+                    const end = new Date(endDate);
+                    end.setHours(23, 59, 59, 999);
+                    return joinDateObj <= end;
+                }
+                return true;
+            });
+
+            return res.json(filtered);
+        }
+
         const customers = await Customer.find();
         res.json(customers);
     } catch (err) {
@@ -253,6 +361,119 @@ app.put('/api/vouchers/:id/use', async (req, res) => {
         res.json(voucher);
     } catch (err) {
         res.status(400).json({ message: err.message });
+    }
+});
+
+// Transaction Routes
+
+// Create transaction
+app.post('/api/transactions', async (req, res) => {
+    try {
+        const newTransaction = new Transaction(req.body);
+        const savedTransaction = await newTransaction.save();
+
+        // Update customer statistics if customer is provided
+        if (req.body.customer && req.body.customer.id) {
+            await Customer.findByIdAndUpdate(
+                req.body.customer.id,
+                {
+                    $inc: {
+                        totalPurchases: 1,
+                        totalSpent: req.body.total
+                    }
+                }
+            );
+        }
+
+        // Update voucher usage if voucher was used
+        if (req.body.voucher && req.body.voucher.id) {
+            await Voucher.findByIdAndUpdate(
+                req.body.voucher.id,
+                { $inc: { usedCount: 1 } }
+            );
+        }
+
+        res.status(201).json(savedTransaction);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Get transactions with optional date filtering
+app.get('/api/transactions', async (req, res) => {
+    try {
+        const { startDate, endDate, searchQuery } = req.query;
+        let query = {};
+
+        // Date filtering
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) {
+                query.createdAt.$gte = new Date(startDate);
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999); // Include the entire end date
+                query.createdAt.$lte = end;
+            }
+        }
+
+        // Search filtering
+        if (searchQuery) {
+            query.$or = [
+                { transactionId: { $regex: searchQuery, $options: 'i' } },
+                { 'customer.name': { $regex: searchQuery, $options: 'i' } }
+            ];
+        }
+
+        const transactions = await Transaction.find(query).sort({ createdAt: -1 });
+        res.json(transactions);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get single transaction by ID
+app.get('/api/transactions/:id', async (req, res) => {
+    try {
+        const transaction = await Transaction.findById(req.params.id);
+        if (!transaction) {
+            return res.status(404).json({ message: 'Transaction not found' });
+        }
+        res.json(transaction);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get transaction statistics
+app.get('/api/transactions/stats/summary', async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let query = {};
+
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) query.createdAt.$gte = new Date(startDate);
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                query.createdAt.$lte = end;
+            }
+        }
+
+        const transactions = await Transaction.find(query);
+        const totalSales = transactions.reduce((sum, t) => sum + t.total, 0);
+        const totalTransactions = transactions.length;
+        const averageTransaction = totalTransactions > 0 ? totalSales / totalTransactions : 0;
+
+        res.json({
+            totalSales,
+            totalTransactions,
+            averageTransaction
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
     }
 });
 

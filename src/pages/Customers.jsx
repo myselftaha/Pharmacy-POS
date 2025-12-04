@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Mail, Phone, MapPin, Calendar } from 'lucide-react';
+import { Search, Plus, Mail, Phone, MapPin, Calendar as CalendarIcon } from 'lucide-react';
 import AddCustomerModal from '../components/customers/AddCustomerModal';
 import ViewCustomerModal from '../components/customers/ViewCustomerModal';
 import EditCustomerModal from '../components/customers/EditCustomerModal';
@@ -7,23 +7,78 @@ import EditCustomerModal from '../components/customers/EditCustomerModal';
 const Customers = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [customers, setCustomers] = useState([]);
+    const [filteredCustomers, setFilteredCustomers] = useState([]);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const [dateFilter, setDateFilter] = useState('All');
+    const [customStartDate, setCustomStartDate] = useState('');
+    const [customEndDate, setCustomEndDate] = useState('');
 
     useEffect(() => {
         fetchCustomers();
     }, []);
 
-    const fetchCustomers = async () => {
+    const fetchCustomers = async (startDate = null, endDate = null) => {
         try {
-            const response = await fetch('http://localhost:5000/api/customers');
+            let url = 'http://localhost:5000/api/customers?';
+            const params = new URLSearchParams();
+
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+
+            const response = await fetch(url + params.toString());
             const data = await response.json();
             setCustomers(data);
+            setFilteredCustomers(data);
         } catch (error) {
             console.error('Error fetching customers:', error);
+            setCustomers([]);
+            setFilteredCustomers([]);
         }
+    };
+
+    // Calculate date ranges based on filter
+    const getDateRange = (filter) => {
+        const now = new Date();
+        let startDate = null;
+        let endDate = now.toISOString().split('T')[0];
+
+        switch (filter) {
+            case 'Week':
+                startDate = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
+                break;
+            case 'Month':
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                break;
+            case 'Year':
+                startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                break;
+            case 'Custom':
+                return { startDate: customStartDate, endDate: customEndDate };
+            default:
+                return { startDate: null, endDate: null };
+        }
+        return { startDate, endDate };
+    };
+
+    // Handle filter change
+    const handleDateFilterChange = (filter) => {
+        setDateFilter(filter);
+        if (filter !== 'Custom') {
+            const { startDate, endDate } = getDateRange(filter);
+            fetchCustomers(startDate, endDate);
+        }
+    };
+
+    // Handle custom date apply
+    const handleCustomDateApply = () => {
+        if (!customStartDate || !customEndDate) {
+            console.warn('Please select both start and end dates');
+            return;
+        }
+        fetchCustomers(customStartDate, customEndDate);
     };
 
     const handleAddCustomer = () => {
@@ -38,16 +93,12 @@ const Customers = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(customerData)
             });
-            console.log('Response status:', response.status);
-            console.log('Response ok:', response.ok);
 
             if (response.ok) {
-                console.log('Customer saved successfully!');
                 await fetchCustomers(); // Refresh list
                 setIsAddModalOpen(false);
             } else {
                 const errorText = await response.text();
-                console.error('Failed to save customer. Status:', response.status, 'Error:', errorText);
                 alert('Failed to save customer: ' + errorText);
             }
         } catch (error) {
@@ -88,11 +139,15 @@ const Customers = () => {
         }
     };
 
-    const filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        customer.phone.includes(searchQuery)
-    );
+    // Apply search filter
+    useEffect(() => {
+        const filtered = customers.filter(customer =>
+            customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            customer.phone.includes(searchQuery)
+        );
+        setFilteredCustomers(filtered);
+    }, [searchQuery, customers]);
 
     return (
         <div>
@@ -119,28 +174,90 @@ const Customers = () => {
                 </div>
             </div>
 
+            {/* Date Filter Buttons */}
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 text-gray-600">
+                        <CalendarIcon size={20} />
+                        <span className="font-medium">Filter by Join Date:</span>
+                    </div>
+                    {['All', 'Week', 'Month', 'Year', 'Custom'].map((filter) => (
+                        <button
+                            key={filter}
+                            onClick={() => handleDateFilterChange(filter)}
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${dateFilter === filter
+                                ? 'bg-green-500 text-white shadow-lg shadow-green-500/20'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                        >
+                            {filter}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Custom Date Range Picker */}
+                {dateFilter === 'Custom' && (
+                    <div className="mt-4 flex items-center gap-3 pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium text-gray-600">From:</label>
+                            <input
+                                type="date"
+                                value={customStartDate}
+                                onChange={(e) => setCustomStartDate(e.target.value)}
+                                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium text-gray-600">To:</label>
+                            <input
+                                type="date"
+                                value={customEndDate}
+                                onChange={(e) => setCustomEndDate(e.target.value)}
+                                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+                            />
+                        </div>
+                        <button
+                            onClick={handleCustomDateApply}
+                            className="px-6 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-colors shadow-lg shadow-green-500/20"
+                        >
+                            Apply
+                        </button>
+                        <button
+                            onClick={() => {
+                                setCustomStartDate('');
+                                setCustomEndDate('');
+                                setDateFilter('All');
+                                fetchCustomers();
+                            }}
+                            className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                        >
+                            Clear
+                        </button>
+                    </div>
+                )}
+            </div>
+
             {/* Stats Cards */}
-            <div className="grid grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-3 gap-6 mb-8">
                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
                     <div className="text-gray-500 text-sm mb-2">Total Customers</div>
-                    <div className="text-3xl font-bold text-gray-800">{customers.length}</div>
+                    <div className="text-3xl font-bold text-gray-800">{filteredCustomers.length}</div>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                    <div className="text-gray-500 text-sm mb-2">Active Customers</div>
+                    <div className="text-gray-500 text-sm mb-2">Today's Customers</div>
                     <div className="text-3xl font-bold text-green-600">
-                        {customers.filter(c => c.status === 'Active').length}
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                    <div className="text-gray-500 text-sm mb-2">VIP Customers</div>
-                    <div className="text-3xl font-bold text-purple-600">
-                        {customers.filter(c => c.status === 'VIP').length}
+                        {filteredCustomers.filter(c => {
+                            if (!c.joinDate) return false;
+                            const joinDate = new Date(c.joinDate);
+                            const today = new Date();
+                            return joinDate.toDateString() === today.toDateString();
+                        }).length}
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
                     <div className="text-gray-500 text-sm mb-2">Total Revenue</div>
                     <div className="text-3xl font-bold text-gray-800">
-                        ${customers.reduce((sum, c) => sum + c.totalSpent, 0).toFixed(2)}
+                        Rs. {filteredCustomers.reduce((sum, c) => sum + c.totalSpent, 0).toFixed(2)}
                     </div>
                 </div>
             </div>
@@ -191,7 +308,7 @@ const Customers = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                                        <Calendar size={14} />
+                                        <CalendarIcon size={14} />
                                         <span>{customer.joinDate}</span>
                                     </div>
                                 </td>
@@ -199,13 +316,10 @@ const Customers = () => {
                                     <span className="text-gray-800 font-medium">{customer.totalPurchases}</span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className="text-gray-800 font-bold">${customer.totalSpent.toFixed(2)}</span>
+                                    <span className="text-gray-800 font-bold">Rs. {customer.totalSpent.toFixed(2)}</span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${customer.status === 'VIP'
-                                            ? 'bg-purple-100 text-purple-700'
-                                            : 'bg-green-100 text-green-700'
-                                        }`}>
+                                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
                                         {customer.status}
                                     </span>
                                 </td>

@@ -9,7 +9,6 @@ import {
     LogOut,
     Stethoscope,
     Ticket,
-    Receipt,
     UserCircle,
     UsersRound
 } from 'lucide-react';
@@ -30,7 +29,6 @@ const Sidebar = () => {
                 { icon: UserCircle, label: 'Users', path: '/users' },
                 { icon: UsersRound, label: 'Customers', path: '/customers' },
                 { icon: Ticket, label: 'Vouchers', path: '/vouchers' },
-                { icon: Receipt, label: 'Prescriptions', path: '/prescriptions' },
                 { icon: Settings, label: 'Settings', path: '/settings' },
                 { icon: Stethoscope, label: 'Community', path: '/community' },
             ]

@@ -46,11 +46,11 @@ const BillModal = ({ isOpen, onClose, items, total, onPrint, customer, discount 
                                 <div>
                                     <span className="font-medium text-gray-800">{item.name}</span>
                                     <div className="text-xs text-gray-500">
-                                        {item.quantity} x ${item.price.toFixed(2)}
+                                        {item.quantity} x Rs. {item.price.toFixed(2)}
                                     </div>
                                 </div>
                                 <span className="font-medium text-gray-800">
-                                    ${(item.quantity * item.price).toFixed(2)}
+                                    Rs. {(item.quantity * item.price).toFixed(2)}
                                 </span>
                             </div>
                         ))}
@@ -59,21 +59,21 @@ const BillModal = ({ isOpen, onClose, items, total, onPrint, customer, discount 
                     <div className="space-y-2 text-sm mb-6">
                         <div className="flex justify-between text-gray-600">
                             <span>Subtotal</span>
-                            <span>${(total - 0.10 + discount).toFixed(2)}</span>
+                            <span>Rs. {(total - 0.10 + discount).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-gray-600">
                             <span>Platform Fee</span>
-                            <span>$0.10</span>
+                            <span>Rs. 0.10</span>
                         </div>
                         {discount > 0 && (
                             <div className="flex justify-between text-green-600">
                                 <span>Discount</span>
-                                <span>-${discount.toFixed(2)}</span>
+                                <span>-Rs. {discount.toFixed(2)}</span>
                             </div>
                         )}
                         <div className="flex justify-between font-bold text-lg text-gray-900 pt-2 border-t border-gray-200">
                             <span>Total</span>
-                            <span>${total.toFixed(2)}</span>
+                            <span>Rs. {total.toFixed(2)}</span>
                         </div>
                     </div>
 
