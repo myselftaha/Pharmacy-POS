@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
+import { useSnackbar } from 'notistack';
 import { Search, Ticket, ScanLine } from 'lucide-react';
 import ProductCard from '../components/pos/ProductCard';
 import CategoryFilter from '../components/pos/CategoryFilter';
 import Cart from '../components/pos/Cart';
 import BillModal from '../components/pos/BillModal';
+import AttachCustomerModal from '../components/pos/AttachCustomerModal';
+import OrderSuccessModal from '../components/pos/OrderSuccessModal';
+import VoucherSelectionModal from '../components/pos/VoucherSelectionModal';
 import { medicines, categories } from '../data/mockData';
 
 const Home = () => {
@@ -11,6 +15,12 @@ const Home = () => {
     const [cartItems, setCartItems] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+    const [isAttachCustomerModalOpen, setIsAttachCustomerModalOpen] = useState(false);
+    const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+    const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+    const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const [selectedVoucher, setSelectedVoucher] = useState(null);
+    const { enqueueSnackbar } = useSnackbar();
 
     const filteredMedicines = medicines.filter(med => {
         const matchesCategory = activeCategory === 'All' || med.category === activeCategory;
@@ -43,9 +53,31 @@ const Home = () => {
 
     const handlePrint = () => {
         window.print();
+        // After print dialog closes (or immediately if non-blocking), show success and clear state
+        setIsBillModalOpen(false);
+        setIsSuccessModalOpen(true);
+        setCartItems([]);
+        setIsSuccessModalOpen(true);
+        setCartItems([]);
+        setSelectedCustomer(null);
+        setSelectedVoucher(null);
     };
 
-    const cartTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) + 0.10;
+    const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const platformFee = 0.10;
+
+    let discountAmount = 0;
+    if (selectedVoucher) {
+        if (selectedVoucher.discountType === 'Percentage') {
+            discountAmount = (subtotal * selectedVoucher.discountValue) / 100;
+        } else {
+            discountAmount = selectedVoucher.discountValue;
+        }
+        // Ensure discount doesn't exceed subtotal
+        discountAmount = Math.min(discountAmount, subtotal);
+    }
+
+    const cartTotal = subtotal + platformFee - discountAmount;
 
     return (
         <div className="flex gap-6 h-[calc(100vh-8rem)]">
@@ -68,9 +100,12 @@ const Home = () => {
                         </div>
                     </div>
                     <div className="flex gap-3 ml-4">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+                        <button
+                            onClick={() => setIsVoucherModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"
+                        >
                             <Ticket size={18} />
-                            <span>Use Voucher</span>
+                            <span>{selectedVoucher ? `Voucher: ${selectedVoucher.code}` : 'Use Voucher'}</span>
                         </button>
                         <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-200">
                             <ScanLine size={18} />
@@ -124,7 +159,17 @@ const Home = () => {
                     items={cartItems}
                     onUpdateQuantity={updateQuantity}
                     onRemove={removeFromCart}
-                    onPrintBill={() => setIsBillModalOpen(true)}
+                    onPrintBill={() => {
+                        if (!selectedCustomer) {
+                            enqueueSnackbar('Please attach a customer before printing the bill', { variant: 'error' });
+                            return;
+                        }
+                        setIsBillModalOpen(true);
+                    }}
+                    onAttachCustomer={() => setIsAttachCustomerModalOpen(true)}
+                    customer={selectedCustomer}
+                    discount={discountAmount}
+                    voucher={selectedVoucher}
                 />
             </div>
 
@@ -134,6 +179,25 @@ const Home = () => {
                 items={cartItems}
                 total={cartTotal}
                 onPrint={handlePrint}
+                customer={selectedCustomer}
+                discount={discountAmount}
+            />
+
+            <AttachCustomerModal
+                isOpen={isAttachCustomerModalOpen}
+                onClose={() => setIsAttachCustomerModalOpen(false)}
+                onSelectCustomer={setSelectedCustomer}
+            />
+
+            <OrderSuccessModal
+                isOpen={isSuccessModalOpen}
+                onClose={() => setIsSuccessModalOpen(false)}
+            />
+
+            <VoucherSelectionModal
+                isOpen={isVoucherModalOpen}
+                onClose={() => setIsVoucherModalOpen(false)}
+                onSelectVoucher={setSelectedVoucher}
             />
         </div>
     );

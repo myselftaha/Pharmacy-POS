@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Printer, CheckCircle } from 'lucide-react';
 
-const BillModal = ({ isOpen, onClose, items, total, onPrint, customer }) => {
+const BillModal = ({ isOpen, onClose, items, total, onPrint, customer, discount = 0 }) => {
     if (!isOpen) return null;
 
     const date = new Date().toLocaleString();
@@ -59,12 +59,18 @@ const BillModal = ({ isOpen, onClose, items, total, onPrint, customer }) => {
                     <div className="space-y-2 text-sm mb-6">
                         <div className="flex justify-between text-gray-600">
                             <span>Subtotal</span>
-                            <span>${(total - 0.10).toFixed(2)}</span>
+                            <span>${(total - 0.10 + discount).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-gray-600">
                             <span>Platform Fee</span>
                             <span>$0.10</span>
                         </div>
+                        {discount > 0 && (
+                            <div className="flex justify-between text-green-600">
+                                <span>Discount</span>
+                                <span>-${discount.toFixed(2)}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between font-bold text-lg text-gray-900 pt-2 border-t border-gray-200">
                             <span>Total</span>
                             <span>${total.toFixed(2)}</span>

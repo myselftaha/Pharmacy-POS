@@ -1,16 +1,21 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 
-const Cart = ({ items, onUpdateQuantity, onRemove, onPrintBill }) => {
+const Cart = ({ items, onUpdateQuantity, onRemove, onPrintBill, onAttachCustomer, customer, discount = 0 }) => {
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const platformFee = 0.10; // Mock fee
-    const total = subtotal + platformFee;
+    const total = Math.max(0, subtotal + platformFee - discount);
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 h-full flex flex-col">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-800">Current Sale</h2>
-                <button className="text-sm text-blue-500 hover:underline">Attach Customer</button>
+                <button
+                    onClick={onAttachCustomer}
+                    className="text-sm text-blue-500 hover:underline font-medium"
+                >
+                    {customer ? customer.name : 'Attach Customer'}
+                </button>
             </div>
 
             <div className="p-4 text-sm text-gray-500">
@@ -73,6 +78,12 @@ const Cart = ({ items, onUpdateQuantity, onRemove, onPrintBill }) => {
                         <span>Platform fee</span>
                         <span className="font-medium">${platformFee.toFixed(2)}</span>
                     </div>
+                    {discount > 0 && (
+                        <div className="flex justify-between text-green-600">
+                            <span>Discount</span>
+                            <span className="font-medium">-${discount.toFixed(2)}</span>
+                        </div>
+                    )}
                     <div className="flex justify-between text-gray-900 font-bold text-lg pt-2 border-t border-gray-200">
                         <span>Total</span>
                         <span>${total.toFixed(2)}</span>
