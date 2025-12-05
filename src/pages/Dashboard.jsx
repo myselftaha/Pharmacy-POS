@@ -135,7 +135,7 @@ const Dashboard = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Transactions */}
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 h-fit">
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 h-full">
                     <h3 className="font-bold text-gray-800 text-lg mb-6">Recent Transactions</h3>
                     <div className="overflow-x-auto">
                         <table className="w-full">

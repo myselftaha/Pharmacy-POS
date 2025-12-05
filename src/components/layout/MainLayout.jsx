@@ -31,9 +31,9 @@ const MainLayout = ({ action }) => {
     return (
         <div className="flex min-h-screen bg-gray-50 font-sans">
             <Sidebar />
-            <div className="flex-1 ml-64">
+            <div className="flex-1 ml-64 flex flex-col max-h-screen overflow-hidden">
                 <Header title={title} subtitle={subtitle} action={action} />
-                <main className="p-8">
+                <main className="p-8 flex-1 overflow-auto">
                     <Outlet />
                 </main>
             </div>

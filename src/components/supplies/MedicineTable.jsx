@@ -3,8 +3,8 @@ import { Pencil, Trash2 } from 'lucide-react';
 
 const MedicineTable = ({ medicines, onEdit, onDelete }) => {
     return (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col h-full">
+            <div className="overflow-auto flex-1">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-gray-50 text-xs font-bold text-gray-500 uppercase border-b border-gray-200">
@@ -35,8 +35,8 @@ const MedicineTable = ({ medicines, onEdit, onDelete }) => {
                                 <td className="px-6 py-4 text-sm text-gray-500">{med.unit}</td>
                                 <td className="px-6 py-4 font-bold text-gray-900">Rs. {med.price.toFixed(2)}</td>
                                 <td className={`px-6 py-4 text-sm font-medium ${med.expiryDate && new Date(med.expiryDate) <= new Date(new Date().setMonth(new Date().getMonth() + 3))
-                                        ? 'text-red-500'
-                                        : 'text-gray-900'
+                                    ? 'text-red-500'
+                                    : 'text-gray-900'
                                     }`}>
                                     {med.expiryDate ? new Date(med.expiryDate).toLocaleDateString() : 'N/A'}
                                 </td>

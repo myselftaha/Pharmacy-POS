@@ -108,8 +108,8 @@ const Supplies = () => {
     });
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h2 className="text-xl font-bold text-gray-800">All Medicines</h2>
                 <div className="flex gap-4">
                     <div className="relative">
@@ -132,17 +132,21 @@ const Supplies = () => {
                 </div>
             </div>
 
-            <CategoryFilter
-                categories={categories}
-                activeCategory={activeCategory}
-                onSelect={setActiveCategory}
-            />
+            <div className="flex-shrink-0 mb-4">
+                <CategoryFilter
+                    categories={categories}
+                    activeCategory={activeCategory}
+                    onSelect={setActiveCategory}
+                />
+            </div>
 
-            <MedicineTable
-                medicines={filteredMedicines}
-                onEdit={handleEditMedicine}
-                onDelete={handleDeleteMedicine}
-            />
+            <div className="flex-1 min-h-0">
+                <MedicineTable
+                    medicines={filteredMedicines}
+                    onEdit={handleEditMedicine}
+                    onDelete={handleDeleteMedicine}
+                />
+            </div>
 
             <AddMedicineModal
                 isOpen={isAddModalOpen}
