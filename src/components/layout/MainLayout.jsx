@@ -15,7 +15,7 @@ const MainLayout = ({ action }) => {
             // So the title is "MyCodeSpace" and subtitle is the page name.
             case '/history': return { title: 'Sales History', subtitle: 'Sales History' };
             case '/supplies': return { title: 'Supplies Management', subtitle: 'Supplies Management' };
-            case '/waitlist': return { title: 'Patient Waitlist', subtitle: 'Patient Waitlist' };
+
             case '/users': return { title: 'User Management', subtitle: 'User Management' };
             case '/customers': return { title: 'Customer Management', subtitle: 'Customer Management' };
             case '/vouchers': return { title: 'Voucher Management', subtitle: 'Voucher Management' };

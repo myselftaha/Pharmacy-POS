@@ -4,7 +4,7 @@ import MainLayout from './components/layout/MainLayout';
 import Home from './pages/Home';
 import History from './pages/History';
 import Supplies from './pages/Supplies';
-import Waitlist from './pages/Waitlist';
+
 import Users from './pages/Users';
 import Customers from './pages/Customers';
 import Vouchers from './pages/Vouchers';
@@ -20,7 +20,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="history" element={<History />} />
           <Route path="supplies" element={<Supplies />} />
-          <Route path="waitlist" element={<Waitlist />} />
+
           <Route path="users" element={<Users />} />
           <Route path="customers" element={<Customers />} />
           <Route path="vouchers" element={<Vouchers />} />

@@ -252,13 +252,7 @@ const Home = () => {
                     </button>
                 </div>
 
-                {/* Waitlist Preview (Mini) */}
-                <div className="bg-white p-4 rounded-xl border border-gray-100 mb-6 flex justify-between items-center">
-                    <div>
-                        <h3 className="font-bold text-gray-800">Waiting List</h3>
-                    </div>
-                    <button className="text-green-600 text-sm font-medium hover:underline">See all</button>
-                </div>
+
 
                 {/* Categories & Grid */}
                 <div className="flex justify-between items-center mb-4">

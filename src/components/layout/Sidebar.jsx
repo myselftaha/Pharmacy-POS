@@ -21,7 +21,7 @@ const Sidebar = () => {
                 { icon: Home, label: 'Home', path: '/' },
                 { icon: Clock, label: 'History', path: '/history' },
                 { icon: Package, label: 'Supplies', path: '/supplies' },
-                { icon: Users, label: 'Waitlist', path: '/waitlist' },
+
             ]
         },
         {
