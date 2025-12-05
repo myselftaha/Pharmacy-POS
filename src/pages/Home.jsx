@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSnackbar } from 'notistack';
-import { Search, Ticket, X } from 'lucide-react';
+import { Search, Ticket, X, AlertTriangle } from 'lucide-react';
 import ProductCard from '../components/pos/ProductCard';
 import CategoryFilter from '../components/pos/CategoryFilter';
 import Cart from '../components/pos/Cart';
@@ -74,6 +74,17 @@ const Home = () => {
         const matchesCategory = activeCategory === 'All' || med.category === activeCategory;
         const matchesSearch = med.name.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesCategory && matchesSearch;
+    });
+
+    // Filter for expiring medicines (within 3 months)
+    const expiringMedicines = medicines.filter(med => {
+        if (!med.expiryDate) return false;
+        const expiryDate = new Date(med.expiryDate);
+        const today = new Date();
+        const threeMonthsFromNow = new Date();
+        threeMonthsFromNow.setMonth(today.getMonth() + 3);
+
+        return expiryDate > today && expiryDate <= threeMonthsFromNow;
     });
 
     const addToCart = (product) => {
@@ -240,6 +251,28 @@ const Home = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* Expiry Alerts */}
+                {expiringMedicines.length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 animate-pulse">
+                        <div className="flex items-center gap-2 text-red-700 font-bold mb-2">
+                            <AlertTriangle size={20} />
+                            <h3>Expiry Alerts</h3>
+                        </div>
+                        <p className="text-sm text-red-600 mb-3">
+                            The following medicines are expiring within 3 months:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            {expiringMedicines.map(med => (
+                                <div key={med._id || med.id} className="bg-white px-3 py-1 rounded-full border border-red-200 text-xs font-medium text-red-600 flex items-center gap-2">
+                                    <span>{med.name}</span>
+                                    <span className="text-red-400">|</span>
+                                    <span>{new Date(med.expiryDate).toLocaleDateString()}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Banner */}
                 <div className="bg-green-600 rounded-xl p-6 text-white mb-8 flex justify-between items-center shadow-lg shadow-green-600/20">

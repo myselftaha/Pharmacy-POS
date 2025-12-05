@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
+import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import History from './pages/History';
 import Supplies from './pages/Supplies';
@@ -18,6 +19,7 @@ function App() {
       <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="history" element={<History />} />
           <Route path="supplies" element={<Supplies />} />
 

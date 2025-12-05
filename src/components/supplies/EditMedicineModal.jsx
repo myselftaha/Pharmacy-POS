@@ -21,7 +21,8 @@ const EditMedicineModal = ({ isOpen, onClose, medicine, onSave }) => {
                 price: medicine.price || '',
                 stock: medicine.stock || '',
                 unit: medicine.unit || 'Box',
-                netContent: medicine.netContent || ''
+                netContent: medicine.netContent || '',
+                expiryDate: medicine.expiryDate || ''
             });
         }
     }, [medicine]);
@@ -139,6 +140,20 @@ const EditMedicineModal = ({ isOpen, onClose, medicine, onSave }) => {
                                     <option key={unit} value={unit}>{unit}</option>
                                 ))}
                             </select>
+                        </div>
+
+                        {/* Expiry Date */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Expiry Date
+                            </label>
+                            <input
+                                type="date"
+                                name="expiryDate"
+                                value={formData.expiryDate ? new Date(formData.expiryDate).toISOString().split('T')[0] : ''}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                            />
                         </div>
 
                         {/* Net Content */}

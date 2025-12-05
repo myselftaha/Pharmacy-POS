@@ -27,7 +27,8 @@ const medicineSchema = new mongoose.Schema({
     unit: String,
     netContent: String,
     category: String,
-    image: String
+    image: String,
+    expiryDate: Date
 });
 
 const Medicine = mongoose.model('Medicine', medicineSchema);
@@ -483,6 +484,14 @@ app.post('/api/seed', async (req, res) => {
         await Medicine.deleteMany({});
         await Customer.deleteMany({});
 
+        const today = new Date();
+        const nextMonth = new Date(today);
+        nextMonth.setMonth(today.getMonth() + 1);
+        const twoMonths = new Date(today);
+        twoMonths.setMonth(today.getMonth() + 2);
+        const fourMonths = new Date(today);
+        fourMonths.setMonth(today.getMonth() + 4);
+
         const seedData = [
             {
                 id: 1,
@@ -493,7 +502,8 @@ app.post('/api/seed', async (req, res) => {
                 unit: 'Box',
                 netContent: '50 assorted',
                 category: 'First Aid',
-                image: 'https://placehold.co/100x100?text=Bandages'
+                image: 'https://placehold.co/100x100?text=Bandages',
+                expiryDate: fourMonths // Safe
             },
             {
                 id: 2,
@@ -504,7 +514,8 @@ app.post('/api/seed', async (req, res) => {
                 unit: 'Box',
                 netContent: '20 tablets',
                 category: 'Antihistamines',
-                image: 'https://placehold.co/100x100?text=Allergy'
+                image: 'https://placehold.co/100x100?text=Allergy',
+                expiryDate: nextMonth // Expiring soon
             },
             {
                 id: 3,
@@ -515,7 +526,8 @@ app.post('/api/seed', async (req, res) => {
                 unit: 'Strip',
                 netContent: '10 capsules',
                 category: 'Antibiotics',
-                image: 'https://placehold.co/100x100?text=Amoxicillin'
+                image: 'https://placehold.co/100x100?text=Amoxicillin',
+                expiryDate: twoMonths // Expiring soon
             },
             {
                 id: 4,
@@ -526,7 +538,8 @@ app.post('/api/seed', async (req, res) => {
                 unit: 'Box',
                 netContent: '15',
                 category: 'Antibiotics',
-                image: 'https://placehold.co/100x100?text=Cefalaxin'
+                image: 'https://placehold.co/100x100?text=Cefalaxin',
+                expiryDate: nextMonth // Expiring soon
             },
             {
                 id: 5,
@@ -537,7 +550,8 @@ app.post('/api/seed', async (req, res) => {
                 unit: 'Bottle',
                 netContent: '100ml',
                 category: 'Pain Relief',
-                image: 'https://placehold.co/100x100?text=Cough'
+                image: 'https://placehold.co/100x100?text=Cough',
+                expiryDate: fourMonths // Safe
             },
             {
                 id: 6,
@@ -548,7 +562,8 @@ app.post('/api/seed', async (req, res) => {
                 unit: 'Bottle',
                 netContent: '60 tablets',
                 category: 'Vitamins',
-                image: 'https://placehold.co/100x100?text=Vitamin+C'
+                image: 'https://placehold.co/100x100?text=Vitamin+C',
+                expiryDate: fourMonths // Safe
             }
         ];
 

@@ -10,7 +10,8 @@ import {
     Stethoscope,
     Ticket,
     UserCircle,
-    UsersRound
+    UsersRound,
+    LayoutGrid
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -18,6 +19,7 @@ const Sidebar = () => {
     const navItems = [
         {
             section: 'MAIN MENU', items: [
+                { icon: LayoutGrid, label: 'Dashboard', path: '/dashboard' },
                 { icon: Home, label: 'Home', path: '/' },
                 { icon: Clock, label: 'History', path: '/history' },
                 { icon: Package, label: 'Supplies', path: '/supplies' },
