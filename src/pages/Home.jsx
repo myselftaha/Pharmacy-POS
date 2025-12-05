@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSnackbar } from 'notistack';
-import { Search, Ticket, X, AlertTriangle } from 'lucide-react';
+import { Search, Ticket, X } from 'lucide-react';
 import ProductCard from '../components/pos/ProductCard';
 import CategoryFilter from '../components/pos/CategoryFilter';
 import Cart from '../components/pos/Cart';
@@ -76,16 +76,7 @@ const Home = () => {
         return matchesCategory && matchesSearch;
     });
 
-    // Filter for expiring medicines (within 3 months)
-    const expiringMedicines = medicines.filter(med => {
-        if (!med.expiryDate) return false;
-        const expiryDate = new Date(med.expiryDate);
-        const today = new Date();
-        const threeMonthsFromNow = new Date();
-        threeMonthsFromNow.setMonth(today.getMonth() + 3);
 
-        return expiryDate > today && expiryDate <= threeMonthsFromNow;
-    });
 
     const addToCart = (product) => {
         setCartItems(prev => {
@@ -224,20 +215,20 @@ const Home = () => {
     const cartTotal = subtotal + platformFee - discountAmount;
 
     return (
-        <div className="flex gap-6 h-[calc(100vh-8rem)]">
+        <div className="flex gap-6 h-[calc(100vh-8rem)] overflow-hidden">
             {/* Left Side - Product Grid */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden overflow-x-hidden">
                 {/* Top Actions */}
                 <div className="flex justify-between items-center mb-6">
-                    <div className="flex-1 max-w-md">
+                    <div className="flex-1 max-w-2xl">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={26} />
                             <input
                                 type="text"
                                 placeholder="Search medicine"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+                                className="pl-16 pr-6 py-5 border-2 border-gray-200 rounded-2xl w-full text-lg font-medium focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 shadow-md hover:shadow-lg transition-shadow"
                             />
                         </div>
                     </div>
@@ -252,38 +243,7 @@ const Home = () => {
                     </div>
                 </div>
 
-                {/* Expiry Alerts */}
-                {expiringMedicines.length > 0 && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 animate-pulse">
-                        <div className="flex items-center gap-2 text-red-700 font-bold mb-2">
-                            <AlertTriangle size={20} />
-                            <h3>Expiry Alerts</h3>
-                        </div>
-                        <p className="text-sm text-red-600 mb-3">
-                            The following medicines are expiring within 3 months:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {expiringMedicines.map(med => (
-                                <div key={med._id || med.id} className="bg-white px-3 py-1 rounded-full border border-red-200 text-xs font-medium text-red-600 flex items-center gap-2">
-                                    <span>{med.name}</span>
-                                    <span className="text-red-400">|</span>
-                                    <span>{new Date(med.expiryDate).toLocaleDateString()}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
-                {/* Banner */}
-                <div className="bg-green-600 rounded-xl p-6 text-white mb-8 flex justify-between items-center shadow-lg shadow-green-600/20">
-                    <div>
-                        <h3 className="font-bold text-lg mb-1">Professional Management Systems Join Us</h3>
-                        <p className="text-green-100 text-sm">Professionel Pharmacy Management System Powered By MyCodeSpace</p>
-                    </div>
-                    <button className="bg-white text-green-700 px-6 py-2 rounded-lg font-bold hover:bg-green-50 transition-colors">
-                        Subscribe
-                    </button>
-                </div>
 
 
 
@@ -299,7 +259,7 @@ const Home = () => {
                     onSelect={setActiveCategory}
                 />
 
-                <div className="grid grid-cols-3 gap-4 overflow-y-auto pb-4 pr-2">
+                <div className="grid grid-cols-3 gap-4 overflow-y-auto pb-4 pr-2 scrollbar-hide">
                     {filteredMedicines.map(product => (
                         <ProductCard key={product._id || product.id} product={product} onAdd={addToCart} />
                     ))}

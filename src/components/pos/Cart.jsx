@@ -65,7 +65,14 @@ const Cart = ({ items, onUpdateQuantity, onRemove, onPrintBill, onAttachCustomer
                 {items.length} items in cart
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div
+                className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide"
+                style={{
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    WebkitOverflowScrolling: 'touch'
+                }}
+            >
                 {items.map((item) => (
                     <div key={item.id} className="flex gap-3">
                         <div className="w-12 h-12 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center text-gray-400 font-bold">

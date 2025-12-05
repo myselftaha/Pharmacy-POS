@@ -1,11 +1,15 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Pill } from 'lucide-react';
 
 const ProductCard = ({ product, onAdd }) => {
     return (
         <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col h-full">
-            <div className="h-32 bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
-                <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+            <div className="h-20 bg-gradient-to-br from-green-50 to-blue-50 rounded-lg mb-4 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-sm mb-2">
+                        <Pill className="text-green-600" size={24} />
+                    </div>
+                </div>
             </div>
 
             <div className="flex-1">

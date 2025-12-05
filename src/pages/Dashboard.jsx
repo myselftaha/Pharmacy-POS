@@ -133,11 +133,11 @@ const Dashboard = () => {
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                 {/* Recent Transactions */}
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 h-full">
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
                     <h3 className="font-bold text-gray-800 text-lg mb-6">Recent Transactions</h3>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto flex-1">
                         <table className="w-full">
                             <thead>
                                 <tr className="text-left text-sm text-gray-500 border-b border-gray-100">
