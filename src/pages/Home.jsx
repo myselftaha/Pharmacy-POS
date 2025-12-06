@@ -73,7 +73,8 @@ const Home = () => {
     const filteredMedicines = medicines.filter(med => {
         const matchesCategory = activeCategory === 'All' || med.category === activeCategory;
         const matchesSearch = med.name.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
+        const inInventory = med.inInventory === true;
+        return matchesCategory && matchesSearch && inInventory;
     });
 
 

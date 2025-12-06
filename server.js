@@ -28,7 +28,12 @@ const medicineSchema = new mongoose.Schema({
     netContent: String,
     category: String,
     image: String,
-    expiryDate: Date
+    expiryDate: Date,
+    costPrice: Number,
+    minStock: Number,
+    supplier: String,
+    note: String,
+    inInventory: { type: Boolean, default: false }
 });
 
 const Medicine = mongoose.model('Medicine', medicineSchema);
@@ -113,7 +118,14 @@ app.get('/api/medicines', async (req, res) => {
 // Add new medicine
 app.post('/api/medicines', async (req, res) => {
     try {
-        const newMedicine = new Medicine(req.body);
+        // Find the highest existing ID
+        const lastMedicine = await Medicine.findOne().sort({ id: -1 });
+        const nextId = lastMedicine && lastMedicine.id ? lastMedicine.id + 1 : 1;
+
+        const newMedicine = new Medicine({
+            ...req.body,
+            id: nextId
+        });
         const savedMedicine = await newMedicine.save();
         res.status(201).json(savedMedicine);
     } catch (err) {

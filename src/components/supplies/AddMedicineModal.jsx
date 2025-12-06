@@ -8,7 +8,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSave }) => {
         description: '',
         price: '',
         stock: '',
-        unit: 'Box',
+        unit: 'Piece',
         netContent: ''
     });
 
@@ -33,13 +33,13 @@ const AddMedicineModal = ({ isOpen, onClose, onSave }) => {
             description: '',
             price: '',
             stock: '',
-            unit: 'Box',
+            unit: 'Piece',
             netContent: ''
         });
     };
 
     const categories = ['Antibiotics', 'Antihistamines', 'First Aid', 'Pain Relief', 'Skincare', 'Vitamins'];
-    const units = ['Box', 'Strip', 'Bottle', 'Tube', 'Pack'];
+    const units = ['Piece', 'Box', 'Strip', 'Bottle', 'Tube', 'Pack'];
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

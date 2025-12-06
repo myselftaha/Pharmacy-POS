@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-    Home,
+    ShoppingBag,
     Clock,
     Package,
     Users,
@@ -11,7 +11,8 @@ import {
     Ticket,
     UserCircle,
     UsersRound,
-    LayoutGrid
+    LayoutGrid,
+    ClipboardList
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -20,9 +21,10 @@ const Sidebar = () => {
         {
             section: 'MAIN MENU', items: [
                 { icon: LayoutGrid, label: 'Dashboard', path: '/dashboard' },
-                { icon: Home, label: 'Home', path: '/' },
+                { icon: ShoppingBag, label: 'Sales', path: '/' },
                 { icon: Clock, label: 'History', path: '/history' },
                 { icon: Package, label: 'Supplies', path: '/supplies' },
+                { icon: ClipboardList, label: 'Inventory', path: '/inventory' },
 
             ]
         },

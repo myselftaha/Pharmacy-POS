@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import History from './pages/History';
 import Supplies from './pages/Supplies';
+import Inventory from './pages/Inventory';
 
 import Users from './pages/Users';
 import Customers from './pages/Customers';
@@ -22,6 +23,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="history" element={<History />} />
           <Route path="supplies" element={<Supplies />} />
+          <Route path="inventory" element={<Inventory />} />
 
           <Route path="users" element={<Users />} />
           <Route path="customers" element={<Customers />} />
