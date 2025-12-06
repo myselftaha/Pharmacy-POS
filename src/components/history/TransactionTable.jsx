@@ -29,6 +29,7 @@ const TransactionTable = ({ transactions, onViewDetails }) => {
                             <tr className="bg-gray-50 text-xs font-bold text-gray-500 uppercase border-b border-gray-200">
                                 <th className="px-6 py-4">Transaction ID</th>
                                 <th className="px-6 py-4">Date</th>
+                                <th className="px-6 py-4">Type</th>
                                 <th className="px-6 py-4">Total Amount</th>
                                 <th className="px-6 py-4">Payment Method</th>
                                 <th className="px-6 py-4">Customer</th>
@@ -41,6 +42,14 @@ const TransactionTable = ({ transactions, onViewDetails }) => {
                                 <tr key={tx._id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 font-medium text-gray-900">{tx.transactionId}</td>
                                     <td className="px-6 py-4 text-sm text-gray-500">{formatDate(tx.createdAt)}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`inline-block w-16 text-center py-0.5 rounded text-xs font-medium ${(tx.type === 'Return' || tx.total < 0)
+                                                ? 'bg-red-100 text-red-600'
+                                                : 'bg-green-100 text-green-600'
+                                            }`}>
+                                            {tx.type || 'Sale'}
+                                        </span>
+                                    </td>
                                     <td className="px-6 py-4 font-bold text-gray-900">Rs. {tx.total.toFixed(2)}</td>
                                     <td className="px-6 py-4 text-sm text-gray-500">{tx.paymentMethod}</td>
                                     <td className="px-6 py-4 text-sm text-gray-500">{tx.customer.name}</td>

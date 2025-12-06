@@ -5,13 +5,15 @@ import {
     AlertTriangle,
     Clock,
     ArrowUpRight,
-    Search
+    Search,
+    RotateCcw
 } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 
 const Dashboard = () => {
     const [stats, setStats] = useState({
         todaySales: 0,
+        todayReturns: 0,
         todayTransactions: 0,
         lowStockCount: 0,
         expiringCount: 0
@@ -53,10 +55,14 @@ const Dashboard = () => {
                     new Date(t.createdAt).toISOString().split('T')[0] === todayStr
                 );
 
+                // todaySales should be NET sales (Sales - Returns)
                 const todaySales = todayTx.reduce((sum, t) => sum + (t.total || 0), 0);
+                // todayReturns track just the return value (absolute)
+                const todayReturns = todayTx.reduce((sum, t) => sum + (t.total < 0 ? Math.abs(t.total) : 0), 0);
 
                 setStats({
                     todaySales,
+                    todayReturns,
                     todayTransactions: todayTx.length,
                     lowStockCount: lowStock.length,
                     expiringCount: expiring.length
@@ -98,7 +104,7 @@ const Dashboard = () => {
             <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                 <MetricCard
                     title="Today's Sales"
                     value={`Rs. ${stats.todaySales.toLocaleString()}`}
@@ -114,6 +120,14 @@ const Dashboard = () => {
                     icon={Users}
                     colorClass="text-blue-600"
                     iconBgClass="bg-blue-50"
+                />
+                <MetricCard
+                    title="Returns"
+                    value={`Rs. ${stats.todayReturns?.toLocaleString() || 0}`}
+                    subtext="Processed today"
+                    icon={RotateCcw}
+                    colorClass="text-purple-600"
+                    iconBgClass="bg-purple-50"
                 />
                 <MetricCard
                     title="Low Stock Items"
@@ -144,6 +158,7 @@ const Dashboard = () => {
                                     <th className="pb-3 font-semibold">ID</th>
                                     <th className="pb-3 font-semibold">Time</th>
                                     <th className="pb-3 font-semibold">Customer</th>
+                                    <th className="pb-3 font-semibold">Type</th>
                                     <th className="pb-3 font-semibold">Amount</th>
                                     <th className="pb-3 font-semibold">Items</th>
                                 </tr>
@@ -160,7 +175,15 @@ const Dashboard = () => {
                                         <td className="py-4 text-sm text-gray-800 font-medium">
                                             {tx.customer?.name || 'Walk-in Customer'}
                                         </td>
-                                        <td className="py-4 text-sm font-bold text-gray-800">
+                                        <td className="py-4">
+                                            <span className={`inline-block w-16 text-center py-0.5 rounded text-xs font-medium ${(tx.type === 'Return' || tx.total < 0)
+                                                    ? 'bg-red-100 text-red-600'
+                                                    : 'bg-green-100 text-green-600'
+                                                }`}>
+                                                {tx.type || 'Sale'}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 font-bold text-gray-800 text-sm">
                                             {tx.total?.toFixed(2)}/-
                                         </td>
                                         <td className="py-4 text-sm text-gray-500">

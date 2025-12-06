@@ -33,7 +33,7 @@ const Return = () => {
         try {
             const response = await fetch('http://localhost:5000/api/medicines');
             const data = await response.json();
-            setMedicines(data);
+            setMedicines(data.filter(med => med.inInventory));
         } catch (error) {
             console.error('Error fetching medicines:', error);
         }
@@ -68,14 +68,33 @@ const Return = () => {
     };
 
     const updateQuantity = (id, newQty) => {
-        if (newQty < 1) return;
+        // Handle direct removal or valid number updates
+        if (newQty === 0 || newQty === '0') {
+            removeFromCart(id);
+            return;
+        }
+
+        // Allow empty string for typing
+        if (newQty === '') {
+            setReturnCart(returnCart.map(item =>
+                (item._id || item.id) === id ? { ...item, quantity: '' } : item
+            ));
+            return;
+        }
+
+        const parsed = parseInt(newQty);
+        if (isNaN(parsed) || parsed < 0) return;
+
         setReturnCart(returnCart.map(item =>
-            (item._id || item.id) === id ? { ...item, quantity: newQty } : item
+            (item._id || item.id) === id ? { ...item, quantity: parsed } : item
         ));
     };
 
     const calculateTotalRefund = () => {
-        return returnCart.reduce((total, item) => total + (item.price * item.quantity), 0);
+        return returnCart.reduce((total, item) => {
+            const qty = parseInt(item.quantity) || 0;
+            return total + (item.price * qty);
+        }, 0);
     };
 
     const handleProcessReturn = async () => {
@@ -133,7 +152,7 @@ const Return = () => {
     };
 
     return (
-        <div className="flex h-[calc(100vh-2rem)] gap-6">
+        <div className="flex h-[calc(100vh-6rem)] gap-6">
             {/* Left Panel: Item Search */}
             <div className="flex-1 flex flex-col gap-6">
                 <div>
@@ -141,7 +160,7 @@ const Return = () => {
                     <p className="text-gray-500 text-sm mt-1">Search for items to return to inventory</p>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex-1 flex flex-col">
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
                     <div className="relative mb-4">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                         <input
@@ -153,10 +172,10 @@ const Return = () => {
                         />
                     </div>
 
-                    <div className="flex-1 overflow-auto">
-                        {searchQuery ? (
-                            <div className="space-y-2">
-                                {filteredMedicines.map((med) => (
+                    <div className="flex-1 overflow-auto min-h-0">
+                        <div className="space-y-2">
+                            {filteredMedicines.length > 0 ? (
+                                filteredMedicines.map((med) => (
                                     <div
                                         key={med._id || med.id}
                                         onClick={() => addToReturnCart(med)}
@@ -175,24 +194,21 @@ const Return = () => {
                                             <RotateCcw size={18} />
                                         </button>
                                     </div>
-                                ))}
-                                {filteredMedicines.length === 0 && (
-                                    <div className="text-center py-8 text-gray-400">No items found</div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
-                                <Search size={48} className="mb-4" />
-                                <p>Type to search for items to return</p>
-                            </div>
-                        )}
+                                ))
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
+                                    <Search size={48} className="mb-4" />
+                                    <p>No items found in inventory</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Right Panel: Return Cart */}
             <div className="w-96 flex flex-col gap-6">
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full flex flex-col overflow-hidden">
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full flex flex-col overflow-hidden min-h-0">
                     <div className="p-4 border-b border-gray-100 bg-red-50">
                         <h2 className="font-bold text-red-800 flex items-center gap-2">
                             <RotateCcw size={20} />
@@ -248,19 +264,47 @@ const Return = () => {
                     <div className="flex-1 overflow-auto p-4 space-y-3">
                         {returnCart.length > 0 ? (
                             returnCart.map((item) => (
-                                <div key={item.id} className="flex justify-between items-center group">
+                                <div key={item._id || item.id} className="flex justify-between items-center group">
                                     <div className="flex-1">
                                         <h4 className="font-medium text-sm text-gray-800">{item.name}</h4>
                                         <div className="text-xs text-gray-500 flex items-center gap-1">
                                             <span>Rs. {item.price}</span>
-                                            <span>x</span>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                value={item.quantity}
-                                                onChange={(e) => updateQuantity(item._id || item.id, parseInt(e.target.value) || 1)}
-                                                className="w-12 px-1 py-0.5 border border-gray-200 rounded text-center text-xs focus:outline-none focus:border-red-500"
-                                            />
+                                            <div className="flex items-center">
+                                                <button
+                                                    onClick={() => {
+                                                        const qty = parseInt(item.quantity) || 0;
+                                                        updateQuantity(item._id || item.id, qty - 1);
+                                                    }}
+                                                    className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-l text-gray-600 font-bold transition-colors"
+                                                >
+                                                    -
+                                                </button>
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={item.quantity}
+                                                    onChange={(e) => updateQuantity(item._id || item.id, e.target.value)}
+                                                    onBlur={(e) => {
+                                                        // Ensure valid number on blur, default to 1 if empty/invalid
+                                                        const val = parseInt(e.target.value);
+                                                        if (!e.target.value || isNaN(val) || val < 0) {
+                                                            // If empty or invalid, default to 1 to avoid stuck state, unless user meant 0?
+                                                            // Logic: If user cleared it, maybe they meant to type. If they leave it empty, revert to 1.
+                                                            updateQuantity(item._id || item.id, 1);
+                                                        }
+                                                    }}
+                                                    className="w-12 h-8 text-center border-y border-gray-200 text-sm focus:outline-none focus:border-red-500"
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const qty = parseInt(item.quantity) || 0;
+                                                        updateQuantity(item._id || item.id, qty + 1);
+                                                    }}
+                                                    className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-r text-gray-600 font-bold transition-colors"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="text-right">

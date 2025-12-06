@@ -123,6 +123,7 @@ const Home = () => {
             // Prepare transaction data with clean item objects
             const transactionData = {
                 transactionId,
+                type: 'Sale', // Explicitly mark as Sale
                 customer: selectedCustomer ? {
                     id: selectedCustomer._id,
                     name: selectedCustomer.name,
