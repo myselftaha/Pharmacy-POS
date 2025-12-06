@@ -68,9 +68,9 @@ const Dashboard = () => {
                     expiringCount: expiring.length
                 });
 
-                // Get recent transactions (last 5)
+                // Get recent transactions (last 10)
                 const sortedTx = [...transactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                setRecentTransactions(sortedTx.slice(0, 5));
+                setRecentTransactions(sortedTx.slice(0, 10));
 
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
@@ -149,7 +149,7 @@ const Dashboard = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                 {/* Recent Transactions */}
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col min-h-[600px]">
                     <h3 className="font-bold text-gray-800 text-lg mb-6">Recent Transactions</h3>
                     <div className="overflow-x-auto flex-1">
                         <table className="w-full">
@@ -177,8 +177,8 @@ const Dashboard = () => {
                                         </td>
                                         <td className="py-4">
                                             <span className={`inline-block w-16 text-center py-0.5 rounded text-xs font-medium ${(tx.type === 'Return' || tx.total < 0)
-                                                    ? 'bg-red-100 text-red-600'
-                                                    : 'bg-green-100 text-green-600'
+                                                ? 'bg-red-100 text-red-600'
+                                                : 'bg-green-100 text-green-600'
                                                 }`}>
                                                 {tx.type || 'Sale'}
                                             </span>

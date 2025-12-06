@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, Trash2, RotateCcw, Save } from 'lucide-react';
+import { Search, User, Trash2, RotateCcw, Save, FileText, ArrowLeft } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 
 const Return = () => {
@@ -11,6 +11,12 @@ const Return = () => {
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [customerSearch, setCustomerSearch] = useState('');
     const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+    const [returnMode, setReturnMode] = useState('manual'); // 'manual' or 'invoice'
+    const [transactions, setTransactions] = useState([]);
+    const [filteredTransactions, setFilteredTransactions] = useState([]);
+    const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
+    const [selectedInvoice, setSelectedInvoice] = useState(null);
+
     const { enqueueSnackbar } = useSnackbar();
 
     useEffect(() => {
@@ -49,6 +55,37 @@ const Return = () => {
         }
     };
 
+    const fetchTransactions = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/transactions');
+            const data = await response.json();
+            // Filter only sales for returns
+            const sales = data.filter(tx => !tx.type || tx.type === 'Sale');
+            setTransactions(sales);
+            setFilteredTransactions(sales);
+        } catch (error) {
+            console.error('Error fetching transactions:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (returnMode === 'invoice' && transactions.length === 0) {
+            fetchTransactions();
+        }
+    }, [returnMode]);
+
+    useEffect(() => {
+        if (returnMode === 'invoice') {
+            const lowerQuery = invoiceSearchQuery.toLowerCase();
+            const filtered = transactions.filter(tx =>
+                (tx.transactionId && tx.transactionId.toLowerCase().includes(lowerQuery)) ||
+                (tx.customer && tx.customer.name.toLowerCase().includes(lowerQuery)) ||
+                (tx._id && tx._id.toLowerCase().includes(lowerQuery))
+            );
+            setFilteredTransactions(filtered);
+        }
+    }, [invoiceSearchQuery, transactions, returnMode]);
+
     const addToReturnCart = (medicine) => {
         const itemId = medicine._id || medicine.id;
         const existingItem = returnCart.find(item => (item._id || item.id) === itemId);
@@ -61,6 +98,68 @@ const Return = () => {
             setReturnCart([...returnCart, { ...medicine, quantity: 1 }]);
         }
         // setSearchQuery(''); // Keep search query active
+    };
+
+    const addItemFromInvoice = async (item, invoice, qtyToAdd = 1) => {
+        const itemId = item.id || item._id;
+        const existingInCart = returnCart.find(cartItem => (cartItem._id || cartItem.id) === itemId);
+
+        // Check if adding would exceed purchased quantity
+        const currentQty = existingInCart ? parseInt(existingInCart.quantity) || 0 : 0;
+        const maxQty = item.quantity;
+        const newQty = currentQty + qtyToAdd;
+
+        if (newQty > maxQty) {
+            const available = maxQty - currentQty;
+            if (available <= 0) {
+                enqueueSnackbar(`Already returned full quantity of ${item.name}`, { variant: 'warning' });
+                return;
+            }
+            enqueueSnackbar(`Cannot return ${qtyToAdd} units. Only ${available} remaining.`, { variant: 'warning' });
+            return;
+        }
+
+        // Look up the actual medicine to get the numeric ID
+        let medicineId = item.id;
+        try {
+            const response = await fetch('http://localhost:5000/api/medicines');
+            const medicines = await response.json();
+            const medicine = medicines.find(m => m._id === itemId || m.id === item.id);
+            if (medicine) {
+                medicineId = medicine.id; // Use the numeric ID
+            }
+        } catch (error) {
+            console.error('Error fetching medicine:', error);
+        }
+
+        // Use the price from the invoice and store max returnable quantity
+        const itemToAdd = {
+            ...item,
+            id: medicineId, // Numeric ID for backend
+            _id: itemId, // MongoDB ID for frontend reference
+            price: item.price,
+            maxQuantity: maxQty,
+            quantity: qtyToAdd
+        };
+
+        if (existingInCart) {
+            // Update quantity
+            setReturnCart(returnCart.map(cartItem =>
+                (cartItem._id || cartItem.id) === itemId
+                    ? { ...cartItem, quantity: newQty }
+                    : cartItem
+            ));
+        } else {
+            setReturnCart([...returnCart, itemToAdd]);
+        }
+
+        // Auto-select customer if not already selected
+        if (!selectedCustomer && invoice.customer && invoice.customer.id) {
+            const matchingCustomer = customers.find(c => c._id === invoice.customer.id);
+            if (matchingCustomer) {
+                setSelectedCustomer(matchingCustomer);
+            }
+        }
     };
 
     const removeFromCart = (id) => {
@@ -84,6 +183,13 @@ const Return = () => {
 
         const parsed = parseInt(newQty);
         if (isNaN(parsed) || parsed < 0) return;
+
+        // Check if item has maxQuantity constraint (from invoice)
+        const item = returnCart.find(item => (item._id || item.id) === id);
+        if (item && item.maxQuantity && parsed > item.maxQuantity) {
+            enqueueSnackbar(`Cannot return more than ${item.maxQuantity} units`, { variant: 'error' });
+            return;
+        }
 
         setReturnCart(returnCart.map(item =>
             (item._id || item.id) === id ? { ...item, quantity: parsed } : item
@@ -115,19 +221,25 @@ const Return = () => {
                     email: selectedCustomer.email,
                     phone: selectedCustomer.phone
                 } : { name: 'Walk-in Customer', id: null },
-                items: returnCart.map(item => ({
-                    id: item.id,
-                    _id: item._id, // Pass _id for backend lookup fallback
-                    name: item.name,
-                    price: item.price,
-                    quantity: item.quantity,
-                    subtotal: item.price * item.quantity
-                })),
+                items: returnCart.map(item => {
+                    const qty = parseInt(item.quantity) || 0;
+                    const price = parseFloat(item.price);
+                    return {
+                        id: item.id,
+                        _id: item._id,
+                        name: item.name,
+                        price: price,
+                        quantity: qty,
+                        subtotal: price * qty
+                    };
+                }).filter(item => item.quantity > 0),
                 subtotal: totalRefund,
                 total: totalRefund, // Backend will negate this
                 paymentMethod: 'Cash',
                 processedBy: 'Admin'
             };
+
+            console.log('Transaction Data:', JSON.stringify(transactionData, null, 2));
 
             const response = await fetch('http://localhost:5000/api/transactions', {
                 method: 'POST',
@@ -160,49 +272,168 @@ const Return = () => {
                     <p className="text-gray-500 text-sm mt-1">Search for items to return to inventory</p>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
-                    <div className="relative mb-4">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                        <input
-                            type="text"
-                            placeholder="Search item by name..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
-                        />
-                    </div>
+                {/* Mode Toggle */}
+                <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+                    <button
+                        onClick={() => { setReturnMode('manual'); setSelectedInvoice(null); }}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${returnMode === 'manual' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        Manual Return
+                    </button>
+                    <button
+                        onClick={() => setReturnMode('invoice')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${returnMode === 'invoice' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        Return by Invoice
+                    </button>
+                </div>
 
-                    <div className="flex-1 overflow-auto min-h-0">
-                        <div className="space-y-2">
-                            {filteredMedicines.length > 0 ? (
-                                filteredMedicines.map((med) => (
-                                    <div
-                                        key={med._id || med.id}
-                                        onClick={() => addToReturnCart(med)}
-                                        className="flex items-center justify-between p-3 hover:bg-red-50 rounded-lg cursor-pointer border border-transparent hover:border-red-100 transition-all group"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 group-hover:bg-white">
-                                                {med.category?.charAt(0) || 'M'}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
+
+                    {returnMode === 'manual' ? (
+                        <>
+                            <div className="relative mb-4">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Search item by name..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
+                                />
+                            </div>
+
+                            <div className="flex-1 overflow-auto min-h-0">
+                                <div className="space-y-2">
+                                    {filteredMedicines.length > 0 ? (
+                                        filteredMedicines.map((med) => (
+                                            <div
+                                                key={med._id || med.id}
+                                                onClick={() => addToReturnCart(med)}
+                                                className="flex items-center justify-between p-3 hover:bg-red-50 rounded-lg cursor-pointer border border-transparent hover:border-red-100 transition-all group"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 group-hover:bg-white">
+                                                        {med.category?.charAt(0) || 'M'}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-medium text-gray-800">{med.name}</h3>
+                                                        <p className="text-xs text-gray-500">Rs. {med.price}</p>
+                                                    </div>
+                                                </div>
+                                                <button className="p-2 text-gray-400 group-hover:text-red-500">
+                                                    <RotateCcw size={18} />
+                                                </button>
                                             </div>
-                                            <div>
-                                                <h3 className="font-medium text-gray-800">{med.name}</h3>
-                                                <p className="text-xs text-gray-500">Rs. {med.price}</p>
-                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
+                                            <Search size={48} className="mb-4" />
+                                            <p>No items found in inventory</p>
                                         </div>
-                                        <button className="p-2 text-gray-400 group-hover:text-red-500">
-                                            <RotateCcw size={18} />
-                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        // INVOICE RETURN MODE
+                        <>
+                            {!selectedInvoice ? (
+                                <>
+                                    <div className="relative mb-4">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                        <input
+                                            type="text"
+                                            placeholder="Search by Invoice # or Customer Name..."
+                                            value={invoiceSearchQuery}
+                                            onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                                            className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        />
                                     </div>
-                                ))
+
+                                    <div className="flex-1 overflow-auto min-h-0">
+                                        <div className="space-y-2">
+                                            {filteredTransactions.length > 0 ? (
+                                                filteredTransactions.map((tx) => (
+                                                    <div
+                                                        key={tx._id}
+                                                        onClick={() => setSelectedInvoice(tx)}
+                                                        className="flex items-center justify-between p-4 hover:bg-blue-50 rounded-lg cursor-pointer border border-gray-100 hover:border-blue-200 transition-all group"
+                                                    >
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="font-bold text-gray-800">{tx.transactionId || 'ID N/A'}</span>
+                                                                <span className="text-xs text-gray-500">• {new Date(tx.createdAt).toLocaleDateString()}</span>
+                                                            </div>
+                                                            <div className="text-sm text-gray-600 flex items-center gap-1">
+                                                                <User size={14} />
+                                                                {tx.customer?.name || 'Walk-in'}
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="font-bold text-gray-800">Rs. {tx.total?.toFixed(2)}</div>
+                                                            <div className="text-xs text-gray-500">{tx.items?.length || 0} items</div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
+                                                    <FileText size={48} className="mb-4" />
+                                                    <p>No invoices found</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
-                                    <Search size={48} className="mb-4" />
-                                    <p>No items found in inventory</p>
+                                // SELECTED INVOICE VIEW
+                                <div className="flex flex-col h-full">
+                                    <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
+                                        <button
+                                            onClick={() => setSelectedInvoice(null)}
+                                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                        >
+                                            <ArrowLeft size={20} className="text-gray-600" />
+                                        </button>
+                                        <div>
+                                            <h3 className="font-bold text-gray-800">Invoice {selectedInvoice.transactionId}</h3>
+                                            <p className="text-xs text-gray-500">{new Date(selectedInvoice.createdAt).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-1 overflow-auto space-y-2">
+                                        {selectedInvoice.items.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg bg-gray-50">
+                                                <div>
+                                                    <h4 className="font-medium text-gray-800">{item.name}</h4>
+                                                    <p className="text-xs text-gray-500">
+                                                        Sold: {item.quantity} x Rs. {item.price} = Rs. {item.subtotal}
+                                                    </p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => addItemFromInvoice(item, selectedInvoice, 1)}
+                                                        className="px-3 py-1.5 bg-white border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors flex items-center gap-1"
+                                                    >
+                                                        <RotateCcw size={14} />
+                                                        Return
+                                                    </button>
+                                                    <button
+                                                        onClick={() => addItemFromInvoice(item, selectedInvoice, item.quantity)}
+                                                        className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                                                    >
+                                                        All
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
-                        </div>
-                    </div>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -269,6 +500,9 @@ const Return = () => {
                                         <h4 className="font-medium text-sm text-gray-800">{item.name}</h4>
                                         <div className="text-xs text-gray-500 flex items-center gap-1">
                                             <span>Rs. {item.price}</span>
+                                            {item.maxQuantity && (
+                                                <span className="text-orange-600 font-medium ml-2">• Max: {item.maxQuantity}</span>
+                                            )}
                                             <div className="flex items-center">
                                                 <button
                                                     onClick={() => {

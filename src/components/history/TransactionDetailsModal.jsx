@@ -63,7 +63,9 @@ const TransactionDetailsModal = ({ isOpen, onClose, transaction }) => {
                     <div>
                         <div className="flex items-center gap-2 text-gray-700 mb-3">
                             <ShoppingBag size={20} />
-                            <h3 className="font-bold text-lg">Items Purchased</h3>
+                            <h3 className="font-bold text-lg">
+                                {transaction.type === 'Return' ? 'Items Returned' : 'Items Purchased'}
+                            </h3>
                         </div>
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
                             <table className="w-full">
@@ -109,8 +111,12 @@ const TransactionDetailsModal = ({ isOpen, onClose, transaction }) => {
                     )}
 
                     {/* Total Breakdown */}
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-green-800 mb-3">
+                    <div className={`rounded-lg p-4 ${transaction.type === 'Return'
+                            ? 'bg-red-50 border border-red-200'
+                            : 'bg-green-50 border border-green-200'
+                        }`}>
+                        <div className={`flex items-center gap-2 mb-3 ${transaction.type === 'Return' ? 'text-red-800' : 'text-green-800'
+                            }`}>
                             <DollarSign size={20} />
                             <h3 className="font-bold text-lg">Payment Summary</h3>
                         </div>
@@ -129,10 +135,12 @@ const TransactionDetailsModal = ({ isOpen, onClose, transaction }) => {
                                     <span className="font-medium">-Rs. {transaction.discount.toFixed(2)}</span>
                                 </div>
                             )}
-                            <div className="border-t border-green-300 pt-2 mt-2">
-                                <div className="flex justify-between text-green-800 font-bold text-lg">
-                                    <span>Total Paid:</span>
-                                    <span>Rs. {transaction.total.toFixed(2)}</span>
+                            <div className={`border-t pt-2 mt-2 ${transaction.type === 'Return' ? 'border-red-300' : 'border-green-300'
+                                }`}>
+                                <div className={`flex justify-between font-bold text-lg ${transaction.type === 'Return' ? 'text-red-800' : 'text-green-800'
+                                    }`}>
+                                    <span>{transaction.type === 'Return' ? 'Total Refund:' : 'Total Paid:'}</span>
+                                    <span>Rs. {Math.abs(transaction.total).toFixed(2)}</span>
                                 </div>
                             </div>
                             <div className="flex justify-between text-sm text-gray-600 mt-2">
