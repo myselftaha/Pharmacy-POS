@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { Search, Ticket, X } from 'lucide-react';
 import ProductCard from '../components/pos/ProductCard';
@@ -11,6 +12,7 @@ import VoucherSelectionModal from '../components/pos/VoucherSelectionModal';
 import { categories } from '../data/mockData';
 
 const Home = () => {
+    const navigate = useNavigate();
     const [activeCategory, setActiveCategory] = useState('All');
     const [cartItems, setCartItems] = useState(() => {
         const saved = localStorage.getItem('cartItems');
@@ -251,7 +253,12 @@ const Home = () => {
                 {/* Categories & Grid */}
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-gray-800 text-lg">Medicines</h3>
-                    <button className="text-green-600 text-sm font-medium hover:underline">See all</button>
+                    <button
+                        onClick={() => navigate('/inventory')}
+                        className="px-3 py-1 bg-green-50 text-green-600 rounded-lg text-sm font-semibold hover:bg-green-100 transition-colors border border-green-200 shadow-sm"
+                    >
+                        See all
+                    </button>
                 </div>
 
                 <CategoryFilter

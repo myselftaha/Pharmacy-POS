@@ -55,9 +55,9 @@ const Cart = ({ items, onUpdateQuantity, onRemove, onPrintBill, onAttachCustomer
                 <h2 className="font-bold text-lg text-gray-800">Current Sale</h2>
                 <button
                     onClick={onAttachCustomer}
-                    className="text-sm text-blue-500 hover:underline font-medium"
+                    className="text-xs bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-2 rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all font-bold shadow-md hover:shadow-lg flex items-center gap-1"
                 >
-                    {customer ? customer.name : 'Attach Customer'}
+                    {customer ? customer.name : 'Select Customer'}
                 </button>
             </div>
 

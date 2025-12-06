@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 
 const MedicineTable = ({ medicines, onEdit, onDelete }) => {
     return (
@@ -42,18 +42,20 @@ const MedicineTable = ({ medicines, onEdit, onDelete }) => {
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-900">{med.stock}</td>
                                 <td className="px-6 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-3">
+                                    <div className="flex items-center justify-end gap-2">
                                         <button
                                             onClick={() => onEdit && onEdit(med)}
-                                            className="text-blue-500 hover:text-blue-700 font-medium text-sm flex items-center gap-1"
+                                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                            title="Edit"
                                         >
-                                            Edit
+                                            <Edit size={16} />
                                         </button>
                                         <button
                                             onClick={() => onDelete && onDelete(med)}
-                                            className="text-red-500 hover:text-red-700 font-medium text-sm flex items-center gap-1"
+                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Delete"
                                         >
-                                            Delete
+                                            <Trash2 size={16} />
                                         </button>
                                     </div>
                                 </td>

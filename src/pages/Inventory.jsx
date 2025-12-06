@@ -3,10 +3,13 @@ import { Search, Plus, Filter, Edit, Trash2 } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import AddToInventoryModal from '../components/inventory/AddToInventoryModal';
 import EditInventoryModal from '../components/inventory/EditInventoryModal';
+import CategoryFilter from '../components/pos/CategoryFilter';
+import { categories } from '../data/mockData';
 
 const Inventory = () => {
     const [medicines, setMedicines] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeCategory, setActiveCategory] = useState('All');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
@@ -103,13 +106,15 @@ const Inventory = () => {
     };
 
     // Filter medicines that are IN inventory
-    const inventoryItems = medicines.filter(med =>
-        med.inInventory &&
-        med.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const inventoryItems = medicines.filter(med => {
+        const matchesCategory = activeCategory === 'All' || med.category === activeCategory;
+        const matchesSearch = med.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const inInventory = med.inInventory === true;
+        return inInventory && matchesCategory && matchesSearch;
+    });
 
     return (
-        <div className="flex flex-col h-full bg-gray-50/50">
+        <div className="flex flex-col h-full">
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div>
@@ -124,12 +129,12 @@ const Inventory = () => {
                             placeholder="Search Product..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg w-72 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 shadow-sm transition-all"
+                            className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg w-72 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 shadow-sm transition-all"
                         />
                     </div>
                     <button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-[#1a4d44] text-white rounded-lg font-bold hover:bg-[#153e37] transition-all shadow-lg shadow-green-900/20 transform hover:-translate-y-0.5 active:translate-y-0"
+                        className="flex items-center gap-2 px-6 py-2 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 transition-colors shadow-lg shadow-green-500/20"
                     >
                         <Plus size={18} />
                         <span>Add Product</span>
@@ -137,15 +142,17 @@ const Inventory = () => {
                 </div>
             </div>
 
+            {/* Category Filter */}
+            <div className="mb-6">
+                <CategoryFilter
+                    categories={categories}
+                    activeCategory={activeCategory}
+                    onSelect={setActiveCategory}
+                />
+            </div>
+
             {/* Inventory Table Card */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex-1 overflow-hidden flex flex-col">
-                <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-                    <div className="p-2 bg-green-50 rounded-lg text-green-600">
-                        <Filter size={20} />
-                    </div>
-                    <h2 className="text-lg font-bold text-gray-800">Product Inventory</h2>
-                </div>
-
                 <div className="flex-1 overflow-auto">
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-gray-50 sticky top-0 z-10">
@@ -164,7 +171,7 @@ const Inventory = () => {
                         <tbody className="divide-y divide-gray-100">
                             {inventoryItems.length > 0 ? (
                                 inventoryItems.map((item) => (
-                                    <tr key={item._id} className="hover:bg-gray-50/50 transition-colors group">
+                                    <tr key={item._id} className="hover:bg-green-50/30 transition-colors group">
                                         <td className="px-6 py-4 text-sm font-semibold text-gray-600">#{item.id || 'N/A'}</td>
                                         <td className="px-6 py-4">
                                             <div className="font-bold text-gray-800">{item.name}</div>
@@ -177,7 +184,7 @@ const Inventory = () => {
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.stock <= (item.minStock || 10)
                                                 ? 'bg-red-100 text-red-800'
-                                                : 'bg-[#1a4d44] text-white'
+                                                : 'bg-green-100 text-green-800'
                                                 }`}>
                                                 {item.stock}
                                             </span>
@@ -198,7 +205,7 @@ const Inventory = () => {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={() => {
                                                         setSelectedItem(item);
@@ -220,7 +227,7 @@ const Inventory = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colspan="9" className="px-6 py-12 text-center text-gray-400">
+                                    <td colSpan="9" className="px-6 py-12 text-center text-gray-400">
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-300">
                                                 <Filter size={32} />
