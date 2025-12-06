@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, Filter, Edit, Trash2 } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import AddToInventoryModal from '../components/inventory/AddToInventoryModal';
+import EditInventoryModal from '../components/inventory/EditInventoryModal';
 
 const Inventory = () => {
     const [medicines, setMedicines] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
     const { enqueueSnackbar } = useSnackbar();
 
     useEffect(() => {
@@ -47,6 +50,49 @@ const Inventory = () => {
         } catch (error) {
             console.error('Error adding to inventory:', error);
             enqueueSnackbar('Error adding to inventory', { variant: 'error' });
+        }
+    };
+
+    const handleUpdateInventory = async (medicineId, formData) => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/medicines/${medicineId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                await fetchMedicines();
+                setIsEditModalOpen(false);
+                enqueueSnackbar('Inventory updated successfully!', { variant: 'success' });
+            } else {
+                enqueueSnackbar('Failed to update inventory', { variant: 'error' });
+            }
+        } catch (error) {
+            console.error('Error updating inventory:', error);
+            enqueueSnackbar('Error updating inventory', { variant: 'error' });
+        }
+    };
+
+    const handleDeleteInventory = async (medicineId) => {
+        if (window.confirm('Are you sure you want to remove this item from inventory? It will remain in Supplies.')) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/medicines/${medicineId}`, {
+                    method: 'PUT', // Use PUT to update inInventory flag instead of DELETE
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ inInventory: false })
+                });
+
+                if (response.ok) {
+                    await fetchMedicines();
+                    enqueueSnackbar('Item removed from inventory', { variant: 'success' });
+                } else {
+                    enqueueSnackbar('Failed to remove from inventory', { variant: 'error' });
+                }
+            } catch (error) {
+                console.error('Error removing from inventory:', error);
+                enqueueSnackbar('Error removing from inventory', { variant: 'error' });
+            }
         }
     };
 
@@ -130,8 +176,8 @@ const Inventory = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.stock <= (item.minStock || 10)
-                                                    ? 'bg-red-100 text-red-800'
-                                                    : 'bg-[#1a4d44] text-white'
+                                                ? 'bg-red-100 text-red-800'
+                                                : 'bg-[#1a4d44] text-white'
                                                 }`}>
                                                 {item.stock}
                                             </span>
@@ -142,10 +188,10 @@ const Inventory = () => {
                                         <td className="px-6 py-4">
                                             {item.expiryDate && (
                                                 <span className={`px-3 py-1 rounded-md text-xs font-bold ${new Date(item.expiryDate) < new Date()
-                                                        ? 'bg-red-100 text-red-600'
-                                                        : new Date(item.expiryDate) < new Date(new Date().setMonth(new Date().getMonth() + 3))
-                                                            ? 'bg-orange-100 text-orange-600'
-                                                            : 'bg-gray-100 text-gray-600'
+                                                    ? 'bg-red-100 text-red-600'
+                                                    : new Date(item.expiryDate) < new Date(new Date().setMonth(new Date().getMonth() + 3))
+                                                        ? 'bg-orange-100 text-orange-600'
+                                                        : 'bg-gray-100 text-gray-600'
                                                     }`}>
                                                     {new Date(item.expiryDate).toISOString().split('T')[0]}
                                                 </span>
@@ -153,10 +199,19 @@ const Inventory = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedItem(item);
+                                                        setIsEditModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                >
                                                     <Edit size={16} />
                                                 </button>
-                                                <button className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                                <button
+                                                    onClick={() => handleDeleteInventory(item._id)}
+                                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                >
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
@@ -186,6 +241,13 @@ const Inventory = () => {
                 onClose={() => setIsAddModalOpen(false)}
                 onConfirm={handleAddToInventory}
                 supplies={medicines}
+            />
+
+            <EditInventoryModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                onConfirm={handleUpdateInventory}
+                product={selectedItem}
             />
         </div>
     );
