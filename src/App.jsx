@@ -10,6 +10,7 @@ import Inventory from './pages/Inventory';
 import Users from './pages/Users';
 import Customers from './pages/Customers';
 import Vouchers from './pages/Vouchers';
+import Return from './pages/Return';
 
 import Settings from './pages/Settings';
 import Community from './pages/Community';
@@ -28,6 +29,7 @@ function App() {
           <Route path="users" element={<Users />} />
           <Route path="customers" element={<Customers />} />
           <Route path="vouchers" element={<Vouchers />} />
+          <Route path="return" element={<Return />} /> {/* Added Return route */}
 
           <Route path="settings" element={<Settings />} />
           <Route path="community" element={<Community />} />

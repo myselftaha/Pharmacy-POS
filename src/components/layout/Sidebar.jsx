@@ -12,7 +12,8 @@ import {
     UserCircle,
     UsersRound,
     LayoutGrid,
-    ClipboardList
+    ClipboardList,
+    RotateCcw
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -25,7 +26,7 @@ const Sidebar = () => {
                 { icon: Clock, label: 'History', path: '/history' },
                 { icon: Package, label: 'Supplies', path: '/supplies' },
                 { icon: ClipboardList, label: 'Inventory', path: '/inventory' },
-
+                { icon: RotateCcw, label: 'Returns', path: '/return' },
             ]
         },
         {

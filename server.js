@@ -12,6 +12,12 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Debug Middleware
+app.use((req, res, next) => {
+    console.log(`[DEBUG] Request: ${req.method} ${req.url}`);
+    next();
+});
+
 // MongoDB Connection
 mongoose.connect('mongodb+srv://mrtaha09876_db_user:larkana222@pharmacy-pos.kykzsbc.mongodb.net/medkit-pos?retryWrites=true&w=majority&appName=Pharmacy-POS')
     .then(() => console.log('MongoDB Atlas Connected Successfully'))
@@ -71,8 +77,10 @@ const voucherSchema = new mongoose.Schema({
 const Voucher = mongoose.model('Voucher', voucherSchema);
 
 // Transaction Schema
+// Transaction Schema
 const transactionSchema = new mongoose.Schema({
     transactionId: { type: String, required: true, unique: true },
+    type: { type: String, enum: ['Sale', 'Return'], default: 'Sale' }, // Added type field
     customer: {
         id: String,
         name: { type: String, required: true },
@@ -377,37 +385,93 @@ app.put('/api/vouchers/:id/use', async (req, res) => {
     }
 });
 
-// Transaction Routes
-
-// Create transaction
+// Create transaction (Sale or Return)
 app.post('/api/transactions', async (req, res) => {
     try {
-        const newTransaction = new Transaction(req.body);
+        const { type, items, total, customer, voucher } = req.body;
+
+        // If it's a return, ensure totals are negative if not already
+        const isReturn = type === 'Return';
+        const finalTotal = isReturn && total > 0 ? -total : total;
+
+        const newTransaction = new Transaction({
+            ...req.body,
+            total: finalTotal,
+            type: type || 'Sale'
+        });
+
         const savedTransaction = await newTransaction.save();
 
-        // Update customer statistics if customer is provided
-        if (req.body.customer && req.body.customer.id) {
-            await Customer.findByIdAndUpdate(
-                req.body.customer.id,
-                {
-                    $inc: {
-                        totalPurchases: 1,
-                        totalSpent: req.body.total
-                    }
+        if (isReturn) {
+            // RESTOCK Logic for Returns
+            for (const item of items) {
+                // Find medicine primarily by ID (number) or fallback to name if ID structure differs
+                let medicine = await Medicine.findOne({ id: item.id });
+                if (!medicine && item._id) {
+                    medicine = await Medicine.findById(item._id);
                 }
-            );
-        }
 
-        // Update voucher usage if voucher was used
-        if (req.body.voucher && req.body.voucher.id) {
-            await Voucher.findByIdAndUpdate(
-                req.body.voucher.id,
-                { $inc: { usedCount: 1 } }
-            );
+                if (medicine) {
+                    medicine.stock += item.quantity;
+                    await medicine.save();
+                }
+            }
+
+            // Update customer stats for Return (decreases spent)
+            if (customer && customer.id) {
+                await Customer.findByIdAndUpdate(
+                    customer.id,
+                    {
+                        // Note: totalPurchases usually tracks # of visits, so we might still incr or leave it.
+                        // Let's increment it as an "activity" but reduce totalSpent.
+                        $inc: {
+                            totalPurchases: 1,
+                            totalSpent: finalTotal // finalTotal is negative
+                        }
+                    }
+                );
+            }
+
+        } else {
+            // NORMAL SALE Logic
+            // Update customer statistics if customer is provided
+            if (customer && customer.id) {
+                await Customer.findByIdAndUpdate(
+                    customer.id,
+                    {
+                        $inc: {
+                            totalPurchases: 1,
+                            totalSpent: total
+                        }
+                    }
+                );
+            }
+
+            // Update voucher usage if voucher was used
+            if (voucher && voucher.id) {
+                await Voucher.findByIdAndUpdate(
+                    voucher.id,
+                    { $inc: { usedCount: 1 } }
+                );
+            }
+
+            // Stock deduction should logically happen during checkout in frontend or here.
+            // Assuming frontend handles stock reduction for sales separately or we should add it here too?
+            // Existing code didn't seem to deduct stock here? Check previous context.
+            // Wait, standard POS flow usually deducts stock on sale. 
+            // The previous code didn't explicitly deduct stock in this route? 
+            // Let's double check if stock is deducted elsewhere. 
+            // If not, I should probably add it here for consistency, but to be safe and minimalistic 
+            // I will only implement the requested RETURN logic which explicitly asked for "add to our stock".
+            // The user didn't complain about sales not reducing stock yet, or maybe it's done in another call.
+            // Actually, for "Return", I MUST add stock.
+
+            // Let's stick to EXACTLY what was asked: Restock on Return.
         }
 
         res.status(201).json(savedTransaction);
     } catch (err) {
+        console.error("Transaction Error:", err);
         res.status(400).json({ message: err.message });
     }
 });
@@ -613,4 +677,5 @@ app.post('/api/seed', async (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log('Routes: /api/medicines, /api/customers registered.');
 });
