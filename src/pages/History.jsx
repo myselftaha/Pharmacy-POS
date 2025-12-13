@@ -5,6 +5,7 @@ import TransactionTable from '../components/history/TransactionTable';
 import TransactionDetailsModal from '../components/history/TransactionDetailsModal';
 import SummaryBar from '../components/history/SummaryBar';
 import FilterBar from '../components/history/FilterBar';
+import ZReport from '../components/history/ZReport';
 import { useNavigate } from 'react-router-dom';
 
 const History = () => {
@@ -386,6 +387,13 @@ const History = () => {
                 isOpen={isDetailsModalOpen}
                 onClose={() => setIsDetailsModalOpen(false)}
                 transaction={selectedTransaction}
+            />
+
+            {/* Hidden Print Component */}
+            <ZReport
+                stats={summaryStats}
+                dateFilter={dateFilter}
+                customDates={customDates}
             />
         </div>
     );

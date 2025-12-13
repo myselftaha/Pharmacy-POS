@@ -8,12 +8,15 @@
   #printable-receipt,
   #printable-receipt *,
   #printable-invoice,
-  #printable-invoice * {
+  #printable-invoice *,
+  #printable-z-report,
+  #printable-z-report * {
     visibility: visible;
   }
 
   #printable-receipt,
-  #printable-invoice {
+  #printable-invoice,
+  #printable-z-report {
     position: absolute;
     left: 0;
     top: 0;
