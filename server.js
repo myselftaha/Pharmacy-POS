@@ -17,7 +17,11 @@ app.use(cors({
 app.use(express.json());
 
 // Debug Middleware
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
+    // Ensure DB is connected for every request (Serverless pattern)
+    if (process.env.VERCEL) {
+        await connectDB();
+    }
     console.log(`[DEBUG] Request: ${req.method} ${req.url}`);
     next();
 });
@@ -65,9 +69,42 @@ const authorizeRoles = (...roles) => {
 };
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('MongoDB Atlas Connected Successfully'))
-    .catch(err => console.log('MongoDB Connection Error:', err));
+// MongoDB Connection Strategy for Serverless
+let cached = global.mongoose;
+
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectDB() {
+    if (cached.conn) {
+        return cached.conn;
+    }
+
+    if (!cached.promise) {
+        const opts = {
+            bufferCommands: false, // Important for serverless
+        };
+
+        cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
+            console.log('MongoDB Atlas Connected Successfully');
+            return mongoose;
+        });
+    }
+
+    try {
+        cached.conn = await cached.promise;
+    } catch (e) {
+        cached.promise = null;
+        throw e;
+    }
+
+    return cached.conn;
+}
+
+// Call connectDB immediately for standard server, but in serverless it will be reused
+connectDB().catch(err => console.log('MongoDB Connection Error:', err));
+
 
 // Medicine Schema
 const medicineSchema = new mongoose.Schema({
