@@ -30,6 +30,20 @@
   }
 }
 
+/* Loader Animations */
+@keyframes wave {
+  0%, 40%, 100% {
+    transform: scaleY(0.4);
+  }
+  20% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-wave {
+  animation: wave 1.2s ease-in-out infinite;
+}
+
 /* Hide scrollbars completely while maintaining scroll functionality */
 .scrollbar-hide {
   -ms-overflow-style: none !important;

@@ -10,7 +10,7 @@ const MainLayout = ({ action }) => {
 
     const getPageTitle = (pathname) => {
         switch (pathname) {
-            case '/': return { title: 'POS Terminal', subtitle: 'Sales & Inventory' };
+            case '/pos': return { title: 'POS Terminal', subtitle: 'Sales & Inventory' };
             case '/history': return { title: 'Sales History', subtitle: 'Sales History' };
             case '/supplies': return { title: 'Supplies Management', subtitle: 'Supplies Management' };
             case '/expenses': return { title: 'Expense Management', subtitle: 'Track Shop Expenses' };

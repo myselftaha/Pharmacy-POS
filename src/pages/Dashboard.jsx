@@ -33,7 +33,7 @@ import {
     Cell,
     Legend
 } from 'recharts';
-
+import Loader from '../components/common/Loader';
 const Dashboard = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
@@ -258,17 +258,20 @@ const Dashboard = () => {
         </div>
     );
 
-    if (loading) return <div className="p-8 text-center">Loading dashboard...</div>;
 
     return (
         <div className="pb-8 space-y-6">
+            {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-50">
+                    <Loader type="pulse" message="Loading dashboard data..." size="lg" />
+                </div>
+            )}
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
                 <div className="flex gap-4 items-center">
 
 
-                    {/* Quick Actions Dropdown */}
-                    <div className="relative">
+                    {/* Quick Actions Dropdown */}                    <div className="relative">
                         <button
                             onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
                             style={{ backgroundColor: '#00c950', borderColor: '#00c950' }}
@@ -288,7 +291,7 @@ const Dashboard = () => {
                                     <div className="p-2 space-y-1">
                                         <button
                                             onClick={() => {
-                                                navigate('/');
+                                                navigate('/pos');
                                                 setIsQuickActionsOpen(false);
                                             }}
                                             className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-green-50 rounded-lg transition-colors group"

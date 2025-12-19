@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { Search, Ticket, Plus, ScanBarcode, UserRound, Zap, X } from 'lucide-react';
@@ -12,11 +12,11 @@ import VoucherSelectionModal from '../components/pos/VoucherSelectionModal';
 import BarcodeMappingModal from '../components/pos/BarcodeMappingModal';
 import { categories } from '../data/mockData';
 import API_URL from '../config/api';
-
+import Loader from '../components/common/Loader';
 const Home = () => {
     const navigate = useNavigate();
-    const [activeCategory, setActiveCategory] = useState('All');
-    const [cartItems, setCartItems] = useState(() => {
+    const [loading, setLoading] = useState(false);
+    const [activeCategory, setActiveCategory] = useState('All');    const [cartItems, setCartItems] = useState(() => {
         const saved = localStorage.getItem('cartItems');
         return saved ? JSON.parse(saved) : [];
     });
@@ -53,6 +53,7 @@ const Home = () => {
 
     // Fetch medicines from database
     const fetchMedicines = async () => {
+        setLoading(true);
         try {
             const response = await fetch(`${API_URL}/api/medicines`);
             const data = await response.json();
@@ -60,20 +61,23 @@ const Home = () => {
         } catch (error) {
             console.error('Error fetching medicines:', error);
             setMedicines([]);
+        } finally {
+            setLoading(false);
         }
     };
 
     const fetchSupplies = async () => {
+        setLoading(true);
         try {
             const response = await fetch(`${API_URL}/api/supplies`);
             const data = await response.json();
             setSupplies(data);
         } catch (error) {
             console.error('Error fetching supplies:', error);
+        } finally {
+            setLoading(false);
         }
-    };
-
-    useEffect(() => {
+    };    useEffect(() => {
         fetchMedicines();
         fetchSupplies();
     }, []);
@@ -381,6 +385,11 @@ const Home = () => {
 
     return (
         <div className="flex gap-6 h-[calc(100vh-8rem)] overflow-hidden">
+            {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-50">
+                    <Loader type="wave" message="Loading products..." size="lg" />
+                </div>
+            )}
             {/* Left Side - Product Table */}
             <div className="flex-1 flex flex-col overflow-hidden overflow-x-hidden">
                 {/* Top Actions */}

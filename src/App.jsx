@@ -15,7 +15,6 @@ import Users from './pages/Users';
 import Customers from './pages/Customers';
 import Vouchers from './pages/Vouchers';
 import Return from './pages/Return';
-
 import Expenses from './pages/Expenses';
 import Report from './pages/Report';
 import Staff from './pages/Staff';
@@ -23,7 +22,7 @@ import StaffEdit from './pages/StaffEdit';
 import StaffPaySalary from './pages/StaffPaySalary';
 import StaffAddAdvance from './pages/StaffAddAdvance';
 import OwnerSetup from './pages/OwnerSetup';
-
+import LoaderDemo from './pages/LoaderDemo';
 function App() {
   const [setupStatus, setSetupStatus] = useState({ isSetupCompleted: false, loading: true });
 
@@ -37,23 +36,31 @@ function App() {
         setSetupStatus({ isSetupCompleted: data.isSetupCompleted, loading: false });
       } catch (err) {
         console.error('Failed to check setup status', err);
-        // On error, we assume it's true to allow login if backend is unreachable, 
-        // but strictly false for the very first time.
         setSetupStatus({ isSetupCompleted: true, loading: false });
       }
     };
     checkSetup();
   }, []);
 
-  if (setupStatus.loading) {
-    return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
-      </div>
-    );
-  }
 
   const isSetup = setupStatus.isSetupCompleted;
+
+  const RootRedirect = () => {
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+
+    if (!user) return <Navigate to="/login" replace />;
+
+    // Roles that default to Dashboard
+    const dashboardRoles = ['Admin', 'Super Admin', 'Pharmacist', 'Store Keeper', 'Delivery Rider'];
+
+    if (dashboardRoles.includes(user.role)) {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    // Everyone else defaults to POS
+    return <Navigate to="/pos" replace />;
+  };
 
   return (
     <Router>
@@ -71,6 +78,10 @@ function App() {
         {/* Protected Routes - Only accessible if setup is completed */}
         <Route element={!isSetup ? <Navigate to="/setup" replace /> : <ProtectedRoute />}>
           <Route path="/" element={<MainLayout />}>
+
+            {/* Root Redirect Logic */}
+            <Route index element={<RootRedirect />} />
+
             {/* Common / Dashboard Access */}
             <Route element={<ProtectedRoute roles={['Admin', 'Super Admin', 'Pharmacist', 'Store Keeper', 'Delivery Rider']} />}>
               <Route path="dashboard" element={<Dashboard />} />
@@ -78,7 +89,7 @@ function App() {
 
             {/* Sales & History Access */}
             <Route element={<ProtectedRoute roles={['Admin', 'Super Admin', 'Pharmacist', 'Salesman / Counter Staff', 'Cashier']} />}>
-              <Route index element={<Home />} />
+              <Route path="pos" element={<Home />} />
               <Route path="history" element={<History />} />
               <Route path="customers" element={<Customers />} />
             </Route>
@@ -105,6 +116,7 @@ function App() {
               <Route path="reports" element={<Report />} />
               <Route path="expenses" element={<Expenses />} />
               <Route path="vouchers" element={<Vouchers />} />
+              <Route path="loaders" element={<LoaderDemo />} />
             </Route>
           </Route>
         </Route>

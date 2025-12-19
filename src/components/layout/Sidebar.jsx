@@ -31,7 +31,7 @@ const Sidebar = ({ isHoveredExternally }) => {
         {
             section: 'MAIN MENU', items: [
                 { icon: LayoutGrid, label: 'Dashboard', path: '/dashboard', allowedRoles: ['Admin', 'Super Admin', 'Pharmacist', 'Store Keeper', 'Delivery Rider'] },
-                { icon: ShoppingBag, label: 'Sales', path: '/', allowedRoles: ['Admin', 'Super Admin', 'Pharmacist', 'Salesman / Counter Staff', 'Cashier'] },
+                { icon: ShoppingBag, label: 'Sales', path: '/pos', allowedRoles: ['Admin', 'Super Admin', 'Pharmacist', 'Salesman / Counter Staff', 'Cashier'] },
                 { icon: UsersRound, label: 'Customers', path: '/customers', allowedRoles: ['Admin', 'Super Admin', 'Pharmacist', 'Salesman / Counter Staff', 'Cashier'] },
                 { icon: Clock, label: 'History', path: '/history', allowedRoles: ['Admin', 'Super Admin', 'Pharmacist', 'Salesman / Counter Staff', 'Cashier'] },
                 { icon: Package, label: 'Supplies', path: '/supplies', allowedRoles: ['Admin', 'Super Admin', 'Pharmacist', 'Store Keeper'] },
