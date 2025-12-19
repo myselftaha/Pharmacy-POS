@@ -3602,7 +3602,11 @@ function calculateReorderSuggestion(medicine) {
     };
 }
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log('Routes: /api/medicines, /api/customers registered.');
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log('Routes: /api/medicines, /api/customers registered.');
+    });
+}
+
+export default app;
