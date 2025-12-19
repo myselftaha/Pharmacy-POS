@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { Outlet, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
 
 const MainLayout = ({ action }) => {
     const location = useLocation();
@@ -26,36 +25,20 @@ const MainLayout = ({ action }) => {
 
     return (
         <div className="flex min-h-screen bg-gray-50 font-sans">
-            <motion.div
-                initial={false}
-                animate={{ width: isSidebarHovered ? 256 : 80 }}
-                transition={{
-                    type: 'spring',
-                    stiffness: 300,
-                    damping: 30,
-                    mass: 1
-                }}
-                onMouseEnter={() => setIsSidebarHovered(true)}
-                onMouseLeave={() => setIsSidebarHovered(false)}
-                className="fixed left-0 top-0 h-full z-50 overflow-visible"
-            >
-                <Sidebar isHoveredExternally={isSidebarHovered} />
-            </motion.div>
-            <motion.div
-                animate={{ marginLeft: isSidebarHovered ? 256 : 80 }}
-                transition={{
-                    type: 'spring',
-                    stiffness: 300,
-                    damping: 30,
-                    mass: 1
-                }}
-                className="flex-1 flex flex-col max-h-screen overflow-hidden"
+            <Sidebar 
+                isHoveredExternally={isSidebarHovered} 
+                onHoverChange={setIsSidebarHovered}
+            />
+            
+            <div
+                style={{ willChange: 'margin-left' }}
+                className={`flex-1 flex flex-col max-h-screen overflow-hidden transition-all duration-300 ease-in-out ${isSidebarHovered ? 'ml-64' : 'ml-20'}`}
             >
                 <Header title={title} subtitle={subtitle} action={action} />
                 <main className="p-8 flex-1 overflow-auto">
                     <Outlet />
                 </main>
-            </motion.div>
+            </div>
         </div>
     );
 };

@@ -453,50 +453,67 @@ const Dashboard = () => {
                     />
                 </div>
 
-                {/* 2. Charts Row */}
+                {/* 2. Middle Row: Sales Trend (Line Chart) */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Sales Trend Bar Chart (Takes 2/3 width) */}
                     <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                        <h3 className="font-bold text-gray-800 text-lg mb-6">Sales Trend (Last 7 Days)</h3>
-                        <div className="h-72 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-lg font-bold text-gray-800">Sales Trend (Last 7 Days)</h2>
+                            <div className="p-2 bg-green-50 text-green-600 rounded-lg">
+                                <TrendingUp size={20} />
+                            </div>
+                        </div>
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%" debounce={300}>
                                 <BarChart data={salesTrend}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} tickFormatter={(value) => `Rs.${value / 1000}k`} />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(value) => `Rs.${value}`} />
                                     <Tooltip
-                                        cursor={{ fill: '#F3F4F6' }}
-                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        formatter={(value) => [`Rs. ${value}`, 'Sales']}
+                                        cursor={{ fill: '#f9fafb' }}
                                     />
-                                    <Bar dataKey="sales" fill="#00c950" radius={[4, 4, 0, 0]} barSize={40} />
+                                    <Bar dataKey="sales" fill="#22c55e" radius={[6, 6, 0, 0]} barSize={40} animationDuration={1000} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* Category Pie Chart (Takes 1/3 width) */}
-                    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col">
-                        <h3 className="font-bold text-gray-800 text-lg mb-4">Sales by Category</h3>
-                        <div className="flex-1 min-h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={categorySales}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {categorySales.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                                </PieChart>
-                            </ResponsiveContainer>
+                    {/* 3. Category Sales (Pie Chart) */}
+                    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-lg font-bold text-gray-800">Sales by Category</h2>
+                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                <Package size={20} />
+                            </div>
+                        </div>
+                        <div className="h-64 relative">
+                            {categorySales.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%" debounce={300}>
+                                    <PieChart>
+                                        <Pie
+                                            data={categorySales}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {categorySales.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                                    <Package size={48} className="mb-2 opacity-20" />
+                                    <p>No sales data yet</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
