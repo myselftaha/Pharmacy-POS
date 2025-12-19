@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, CreditCard, FileText } from 'lucide-react';
+import API_URL from '../../config/api';
+
 
 const RecordPaymentModal = ({ isOpen, onClose, onConfirm, supplierBalance = 0, selectedInvoice = null, supplierId }) => {
     const [allowAdvance, setAllowAdvance] = useState(false);
@@ -87,10 +89,10 @@ const RecordPaymentModal = ({ isOpen, onClose, onConfirm, supplierBalance = 0, s
 
             console.log('Supplier ID:', supplierId);
             console.log('Item Payments:', itemPayments);
-            console.log('Request URL:', `http://localhost:5000/api/suppliers/${supplierId}/pay-items`);
+            console.log('Request URL:', `${API_URL}/api/suppliers/${supplierId}/pay-items`);
 
             // Call the new pay-items endpoint
-            const response = await fetch(`http://localhost:5000/api/suppliers/${supplierId}/pay-items`, {
+            const response = await fetch(`${API_URL}/api/suppliers/${supplierId}/pay-items`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

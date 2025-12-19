@@ -11,6 +11,7 @@ import OrderSuccessModal from '../components/pos/OrderSuccessModal';
 import VoucherSelectionModal from '../components/pos/VoucherSelectionModal';
 import BarcodeMappingModal from '../components/pos/BarcodeMappingModal';
 import { categories } from '../data/mockData';
+import API_URL from '../config/api';
 
 const Home = () => {
     const navigate = useNavigate();
@@ -53,7 +54,7 @@ const Home = () => {
     // Fetch medicines from database
     const fetchMedicines = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/medicines');
+            const response = await fetch(`${API_URL}/api/medicines`);
             const data = await response.json();
             setMedicines(data);
         } catch (error) {
@@ -64,7 +65,7 @@ const Home = () => {
 
     const fetchSupplies = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplies');
+            const response = await fetch(`${API_URL}/api/supplies`);
             const data = await response.json();
             setSupplies(data);
         } catch (error) {
@@ -230,7 +231,7 @@ const Home = () => {
 
     const handleMapBarcode = async (mappingData) => {
         try {
-            const response = await fetch('http://localhost:5000/api/medicines/map-barcode', {
+            const response = await fetch(`${API_URL}/api/medicines/map-barcode`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(mappingData) // { medicineId, barcode, unit, packSize }
@@ -315,7 +316,7 @@ const Home = () => {
                 const cleanTransactionData = JSON.parse(JSON.stringify(transactionData));
 
                 console.log('Attempting to save transaction...', cleanTransactionData);
-                const response = await fetch('http://localhost:5000/api/transactions', {
+                const response = await fetch(`${API_URL}/api/transactions`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(cleanTransactionData)

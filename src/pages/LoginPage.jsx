@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, User, Loader2, ShieldAlert } from 'lucide-react';
 import { useSnackbar } from 'notistack';
+import API_URL from '../config/api';
+
 
 const LoginPage = () => {
     const [credentials, setCredentials] = useState({ username: '', password: '' });
@@ -17,7 +19,7 @@ const LoginPage = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/api/users/login', {
+            const response = await fetch(`${API_URL}/api/users/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(credentials)

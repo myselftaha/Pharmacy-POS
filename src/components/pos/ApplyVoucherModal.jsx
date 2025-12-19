@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Ticket, Check, AlertCircle, Search } from 'lucide-react';
+import API_URL from '../../config/api';
+
 
 const ApplyVoucherModal = ({ isOpen, onClose, onApply, cartTotal }) => {
     const [voucherCode, setVoucherCode] = useState('');
@@ -21,7 +23,7 @@ const ApplyVoucherModal = ({ isOpen, onClose, onApply, cartTotal }) => {
     const fetchActiveVouchers = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/api/vouchers');
+            const response = await fetch(`${API_URL}/api/vouchers`);
             const data = await response.json();
             // Filter only active vouchers that are valid today
             const now = new Date();
@@ -45,7 +47,7 @@ const ApplyVoucherModal = ({ isOpen, onClose, onApply, cartTotal }) => {
         setSuccess('');
 
         try {
-            const response = await fetch('http://localhost:5000/api/vouchers/validate', {
+            const response = await fetch(`${API_URL}/api/vouchers/validate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code, purchaseAmount: cartTotal })

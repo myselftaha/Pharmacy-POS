@@ -5,6 +5,8 @@ import AddUserModal from '../components/users/AddUserModal';
 import EditUserModal from '../components/users/EditUserModal';
 import ResetPasswordModal from '../components/users/ResetPasswordModal';
 import { useSnackbar } from 'notistack';
+import API_URL from '../config/api';
+
 
 const Users = () => {
     const [users, setUsers] = useState([]);
@@ -23,7 +25,7 @@ const Users = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/api/users', {
+            const response = await fetch(`${API_URL}/api/users`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -46,7 +48,7 @@ const Users = () => {
     const handleAddUser = async (userData) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/api/users', {
+            const response = await fetch(`${API_URL}/api/users`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -71,7 +73,7 @@ const Users = () => {
     const handleEditUser = async (id, updateData) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:5000/api/users/${id}`, {
+            const response = await fetch(`${API_URL}/api/users/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -95,7 +97,7 @@ const Users = () => {
     const handleResetPassword = async (newPassword) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:5000/api/users/${selectedUser._id}/reset-password`, {
+            const response = await fetch(`${API_URL}/api/users/${selectedUser._id}/reset-password`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -119,7 +121,7 @@ const Users = () => {
         try {
             const token = localStorage.getItem('token');
             const newStatus = user.status === 'Active' ? 'Deactivated' : 'Active';
-            const response = await fetch(`http://localhost:5000/api/users/${user._id}`, {
+            const response = await fetch(`${API_URL}/api/users/${user._id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

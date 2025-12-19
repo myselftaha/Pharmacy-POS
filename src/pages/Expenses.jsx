@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Calendar, FileText, DollarSign, Filter, Search, Edit, Download, Upload, X, CheckCircle, AlertCircle, ChevronDown, TrendingUp, TrendingDown, Eye, Printer } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import * as XLSX from 'xlsx';
+import API_URL from '../config/api';
+
 
 const Expenses = () => {
     const [expenses, setExpenses] = useState([]);
@@ -62,7 +64,7 @@ const Expenses = () => {
         try {
             const today = new Date();
             const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-            const response = await fetch(`http://localhost:5000/api/transactions?startDate=${startOfMonth.toISOString().split('T')[0]}&type=Sale`);
+            const response = await fetch(`${API_URL}/api/transactions?startDate=${startOfMonth.toISOString().split('T')[0]}&type=Sale`);
             const data = await response.json();
             const transactions = Array.isArray(data) ? data : (data.data || []);
             const total = transactions.reduce((sum, tx) => sum + (tx.total || 0), 0);
@@ -102,7 +104,7 @@ const Expenses = () => {
     const fetchExpenses = async () => {
         try {
             const { start, end } = getDateRange();
-            let url = 'http://localhost:5000/api/expenses?';
+            let url = `${API_URL}/api/expenses?`;
             const params = new URLSearchParams();
             if (start) params.append('startDate', start);
             if (end) params.append('endDate', end);
@@ -202,8 +204,8 @@ const Expenses = () => {
             delete submitData.attachment; // Will handle separately if needed
 
             const url = editingExpense 
-                ? `http://localhost:5000/api/expenses/${editingExpense._id}`
-                : 'http://localhost:5000/api/expenses';
+                ? `${API_URL}/api/expenses/${editingExpense._id}`
+                : `${API_URL}/api/expenses`;
             const method = editingExpense ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
@@ -270,7 +272,7 @@ const Expenses = () => {
         if (!window.confirm('Are you sure you want to delete this expense?')) return;
 
         try {
-            const response = await fetch(`http://localhost:5000/api/expenses/${id}`, {
+            const response = await fetch(`${API_URL}/api/expenses/${id}`, {
                 method: 'DELETE'
             });
 

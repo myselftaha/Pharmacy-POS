@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { ArrowLeft } from 'lucide-react';
+import API_URL from '../config/api';
+
 
 const StaffPaySalary = () => {
     const { id } = useParams();
@@ -21,7 +23,7 @@ const StaffPaySalary = () => {
     useEffect(() => {
         const load = async () => {
             try {
-                const res = await fetch(`http://localhost:5000/api/staff/${id}`);
+                const res = await fetch(`${API_URL}/api/staff/${id}`);
                 const data = await res.json();
                 setStaff(data.staff || data);
             } catch (err) {
@@ -71,7 +73,7 @@ const StaffPaySalary = () => {
                 periodEnd: today.toISOString(),
                 ...cleanAttendance
             };
-            const res = await fetch(`http://localhost:5000/api/staff/${id}/payments`, {
+            const res = await fetch(`${API_URL}/api/staff/${id}/payments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

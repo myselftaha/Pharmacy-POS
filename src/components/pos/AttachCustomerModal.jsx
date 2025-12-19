@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, User, Mail, Phone } from 'lucide-react';
+import API_URL from '../../config/api';
+
 
 const AttachCustomerModal = ({ isOpen, onClose, onSelectCustomer }) => {
     const [customers, setCustomers] = useState([]);
@@ -15,7 +17,7 @@ const AttachCustomerModal = ({ isOpen, onClose, onSelectCustomer }) => {
     const fetchCustomers = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/api/customers');
+            const response = await fetch(`${API_URL}/api/customers`);
             const data = await response.json();
             setCustomers(data);
         } catch (error) {

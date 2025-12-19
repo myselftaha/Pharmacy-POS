@@ -3,6 +3,8 @@ import { Search, Plus, Mail, Phone, MapPin, Calendar as CalendarIcon } from 'luc
 import AddCustomerModal from '../components/customers/AddCustomerModal';
 import ViewCustomerModal from '../components/customers/ViewCustomerModal';
 import EditCustomerModal from '../components/customers/EditCustomerModal';
+import API_URL from '../config/api';
+
 
 const Customers = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -22,7 +24,7 @@ const Customers = () => {
 
     const fetchCustomers = async (startDate = null, endDate = null) => {
         try {
-            let url = 'http://localhost:5000/api/customers?';
+            let url = `${API_URL}/api/customers?`;
             const params = new URLSearchParams();
 
             if (startDate) params.append('startDate', startDate);
@@ -88,7 +90,7 @@ const Customers = () => {
     const handleSaveCustomer = async (customerData) => {
         try {
             console.log('Saving customer:', customerData);
-            const response = await fetch('http://localhost:5000/api/customers', {
+            const response = await fetch(`${API_URL}/api/customers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(customerData)
@@ -119,7 +121,7 @@ const Customers = () => {
 
     const handleUpdateCustomer = async (customerId, customerData) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/customers/${customerId}`, {
+            const response = await fetch(`${API_URL}/api/customers/${customerId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(customerData)

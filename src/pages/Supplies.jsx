@@ -7,6 +7,7 @@ import AddMedicineModal from '../components/supplies/AddMedicineModal';
 import EditSupplyModal from '../components/supplies/EditSupplyModal';
 import DeleteConfirmationModal from '../components/common/DeleteConfirmationModal';
 import AddSupplierModal from '../components/suppliers/AddSupplierModal';
+import API_URL from '../config/api';
 
 const Supplies = () => {
     const { enqueueSnackbar } = useSnackbar();
@@ -76,7 +77,7 @@ const Supplies = () => {
     // =======================
     const fetchSupplies = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplies');
+            const response = await fetch(`${API_URL}/api/supplies`);
             if (response.ok) {
                 const data = await response.json();
                 setSupplies(data);
@@ -91,7 +92,7 @@ const Supplies = () => {
 
     const handleSaveSupply = async (supplyData) => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplies', {
+            const response = await fetch(`${API_URL}/api/supplies`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(supplyData)
@@ -120,7 +121,7 @@ const Supplies = () => {
 
     const handleUpdateSupply = async (updatedData) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/supplies/${selectedSupply._id || selectedSupply.id}`, {
+            const response = await fetch(`${API_URL}/api/supplies/${selectedSupply._id || selectedSupply.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData)
@@ -151,7 +152,7 @@ const Supplies = () => {
 
         try {
             const supplyId = supplyToDelete._id || supplyToDelete.id;
-            const response = await fetch(`http://localhost:5000/api/supplies/${supplyId}`, {
+            const response = await fetch(`${API_URL}/api/supplies/${supplyId}`, {
                 method: 'DELETE'
             });
 
@@ -186,7 +187,7 @@ const Supplies = () => {
     // =======================
     const fetchSuppliers = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/suppliers');
+            const response = await fetch(`${API_URL}/api/suppliers`);
             const data = await response.json();
             setSuppliers(data);
         } catch (error) {
@@ -199,7 +200,7 @@ const Supplies = () => {
 
     const handleAddSupplier = async (formData) => {
         try {
-            const response = await fetch('http://localhost:5000/api/suppliers', {
+            const response = await fetch(`${API_URL}/api/suppliers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -221,7 +222,7 @@ const Supplies = () => {
 
     const handleEditSupplier = async (formData) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/suppliers/${editingSupplier._id}`, {
+            const response = await fetch(`${API_URL}/api/suppliers/${editingSupplier._id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -251,7 +252,7 @@ const Supplies = () => {
         if (!supplierToDelete) return;
 
         try {
-            const response = await fetch(`http://localhost:5000/api/suppliers/${supplierToDelete._id}`, {
+            const response = await fetch(`${API_URL}/api/suppliers/${supplierToDelete._id}`, {
                 method: 'DELETE'
             });
 

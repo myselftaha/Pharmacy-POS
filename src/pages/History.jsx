@@ -8,6 +8,8 @@ import SummaryBar from '../components/history/SummaryBar';
 import FilterBar from '../components/history/FilterBar';
 import ZReport from '../components/history/ZReport';
 import { useNavigate } from 'react-router-dom';
+import API_URL from '../config/api';
+
 
 const History = () => {
     const navigate = useNavigate();
@@ -61,7 +63,7 @@ const History = () => {
             if (filters.maxAmount) params.append('maxAmount', filters.maxAmount);
 
             // Fetch List
-            const response = await fetch(`http://localhost:5000/api/transactions?${params.toString()}`);
+            const response = await fetch(`${API_URL}/api/transactions?${params.toString()}`);
             if (!response.ok) throw new Error('Failed to fetch transactions');
             const data = await response.json();
 
@@ -69,7 +71,7 @@ const History = () => {
             setPagination(data.pagination || { page: 1, limit: 50, total: 0, pages: 1 });
 
             // Fetch Summary Stats (using same filters)
-            const statsResponse = await fetch(`http://localhost:5000/api/transactions/stats/summary?${params.toString()}`);
+            const statsResponse = await fetch(`${API_URL}/api/transactions/stats/summary?${params.toString()}`);
             if (statsResponse.ok) {
                 const statsData = await statsResponse.json();
                 setSummaryStats(statsData);
@@ -155,7 +157,7 @@ const History = () => {
             if (filters.cashier !== 'All') params.append('cashier', filters.cashier);
             if (filters.type !== 'All') params.append('type', filters.type);
 
-            const response = await fetch(`http://localhost:5000/api/transactions?${params.toString()}`);
+            const response = await fetch(`${API_URL}/api/transactions?${params.toString()}`);
             if (!response.ok) throw new Error('Failed to fetch data for export');
             const data = await response.json();
 
@@ -226,7 +228,7 @@ const History = () => {
         if (!reason) return;
 
         try {
-            const response = await fetch(`http://localhost:5000/api/transactions/${transaction._id}/void`, {
+            const response = await fetch(`${API_URL}/api/transactions/${transaction._id}/void`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reason, voidedBy: 'Admin' }) // Replace with actual user

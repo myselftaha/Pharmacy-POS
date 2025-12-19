@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, ShieldCheck, Loader2 } from 'lucide-react';
 import { useSnackbar } from 'notistack';
+import API_URL from '../config/api';
+
 
 const OwnerSetup = ({ onComplete }) => {
     const [formData, setFormData] = useState({
@@ -21,7 +23,7 @@ const OwnerSetup = ({ onComplete }) => {
 
     const checkStatus = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/system/status');
+            const response = await fetch(`${API_URL}/api/system/status`);
             const data = await response.json();
             if (data.isSetupCompleted) {
                 navigate('/login');
@@ -46,7 +48,7 @@ const OwnerSetup = ({ onComplete }) => {
 
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/api/system/setup', {
+            const response = await fetch(`${API_URL}/api/system/setup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

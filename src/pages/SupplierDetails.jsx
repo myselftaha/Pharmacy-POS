@@ -5,6 +5,8 @@ import { useSnackbar } from 'notistack';
 import RecordPaymentModal from '../components/suppliers/RecordPaymentModal';
 import InvoiceDetailsModal from '../components/invoices/InvoiceDetailsModal';
 import PurchaseReturnModal from '../components/suppliers/PurchaseReturnModal';
+import API_URL from '../config/api';
+
 
 const SupplierDetails = () => {
     const { id } = useParams();
@@ -37,7 +39,7 @@ const SupplierDetails = () => {
 
     const fetchSupplierDetails = useCallback(async () => {
         try {
-            const supplierRes = await fetch(`http://localhost:5000/api/suppliers/${id}`);
+            const supplierRes = await fetch(`${API_URL}/api/suppliers/${id}`);
             if (!supplierRes.ok) throw new Error('Failed to fetch supplier');
 
             const responseData = await supplierRes.json();
@@ -86,10 +88,10 @@ const SupplierDetails = () => {
 
         try {
             if (invoice.type === 'Invoice') {
-                await fetch(`http://localhost:5000/api/supplies/${invoice.id}`, { method: 'DELETE' });
+                await fetch(`${API_URL}/api/supplies/${invoice.id}`, { method: 'DELETE' });
             } else if (invoice.items) {
                 for (const item of invoice.items) {
-                    await fetch(`http://localhost:5000/api/supplies/${item.id}`, { method: 'DELETE' });
+                    await fetch(`${API_URL}/api/supplies/${item.id}`, { method: 'DELETE' });
                 }
             }
 
@@ -469,7 +471,7 @@ const SupplierDetails = () => {
                 supplierName={supplier?.name}
                 onConfirm={async (data) => {
                     try {
-                        const response = await fetch(`http://localhost:5000/api/suppliers/return`, {
+                        const response = await fetch(`${API_URL}/api/suppliers/return`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(data)

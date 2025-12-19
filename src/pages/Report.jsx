@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Download, TrendingUp, TrendingDown, DollarSign, Filter, PieChart as PieChartIcon, ArrowRight } from 'lucide-react';
 import { useSnackbar } from 'notistack';
+import API_URL from '../config/api';
 import {
     BarChart,
     Bar,
@@ -73,18 +74,18 @@ const Report = () => {
             const endStr = end.toISOString();
 
             // 1. Fetch Transactions
-            const txRes = await fetch(`http://localhost:5000/api/transactions?startDate=${startStr}&endDate=${endStr}`);
+            const txRes = await fetch(`${API_URL}/api/transactions?startDate=${startStr}&endDate=${endStr}`);
             const txJson = await txRes.json();
             // Backend returns { data, pagination } for transactions
             const transactions = Array.isArray(txJson) ? txJson : (txJson?.data || []);
 
             // 2. Fetch Expenses
-            const expRes = await fetch(`http://localhost:5000/api/expenses?startDate=${startStr}&endDate=${endStr}`);
+            const expRes = await fetch(`${API_URL}/api/expenses?startDate=${startStr}&endDate=${endStr}`);
             const expJson = await expRes.json();
             const expenses = Array.isArray(expJson) ? expJson : (expJson?.data || []);
 
             // 3. Fetch Medicines (for Cost lookup)
-            const medRes = await fetch('http://localhost:5000/api/medicines');
+            const medRes = await fetch(`${API_URL}/api/medicines`);
             const medicines = await medRes.json();
 
             const medMap = {};
@@ -258,13 +259,13 @@ const Report = () => {
                         <h3 className="font-bold text-gray-700 mb-6">Financial Overview</h3>
                         <div className="h-64 w-full">
                             {hasChartData ? (
-                            <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={financialOverviewData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                    <YAxis hide />
-                                    <Tooltip cursor={{ fill: 'transparent' }} />
-                                    <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                                        <YAxis hide />
+                                        <Tooltip cursor={{ fill: 'transparent' }} />
+                                        <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]}>
                                             {[
                                                 { name: 'Revenue', color: '#3B82F6' },
                                                 { name: 'COGS', color: '#9CA3AF' },
@@ -273,9 +274,9 @@ const Report = () => {
                                             ].map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} />
                                             ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
                             ) : (
                                 <div className="flex items-center justify-center h-full text-sm text-gray-400">
                                     No financial data available for the selected period.

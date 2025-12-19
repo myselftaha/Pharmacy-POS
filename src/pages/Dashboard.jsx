@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
+import API_URL from '../config/api';
 import {
     BarChart,
     Bar,
@@ -113,7 +114,7 @@ const Dashboard = () => {
                 setLoading(true);
 
                 // 1. Fetch Accurate Backend Stats (Respects user selected range)
-                const statsResponse = await fetch(`http://localhost:5000/api/dashboard/stats?startDate=${startDate}&endDate=${endDate}`);
+                const statsResponse = await fetch(`${API_URL}/api/dashboard/stats?startDate=${startDate}&endDate=${endDate}`);
                 const statsData = await statsResponse.json();
 
                 // 2. Fetch Transactions for Charts (Always fetch last 30 days to ensure trends/charts work)
@@ -131,12 +132,12 @@ const Dashboard = () => {
                 const chartStart = toLocalISO(thirtyDaysAgo);
                 const chartEnd = toLocalISO(today);
 
-                const txResponse = await fetch(`http://localhost:5000/api/transactions?startDate=${chartStart}&endDate=${chartEnd}&limit=1000`);
+                const txResponse = await fetch(`${API_URL}/api/transactions?startDate=${chartStart}&endDate=${chartEnd}&limit=1000`);
                 const txData = await txResponse.json();
                 const transactions = txData.data || []; // Handle pagination response structure
 
                 // 3. Fetch Medicines
-                const medResponse = await fetch('http://localhost:5000/api/medicines');
+                const medResponse = await fetch(`${API_URL}/api/medicines`);
                 const medicines = await medResponse.json();
 
                 processDashboardData(statsData, transactions, medicines);

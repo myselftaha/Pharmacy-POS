@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, Ticket, Calendar, DollarSign, Users } from 'lucide-react';
 import AddVoucherModal from '../components/vouchers/AddVoucherModal';
 import EditVoucherModal from '../components/vouchers/EditVoucherModal';
+import API_URL from '../config/api';
+
 
 const Vouchers = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -18,7 +20,7 @@ const Vouchers = () => {
     const fetchVouchers = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/api/vouchers');
+            const response = await fetch(`${API_URL}/api/vouchers`);
             const data = await response.json();
             setVouchers(data);
         } catch (error) {
@@ -30,7 +32,7 @@ const Vouchers = () => {
 
     const handleCreateVoucher = async (voucherData) => {
         try {
-            const response = await fetch('http://localhost:5000/api/vouchers', {
+            const response = await fetch(`${API_URL}/api/vouchers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(voucherData)
@@ -56,7 +58,7 @@ const Vouchers = () => {
 
     const handleUpdateVoucher = async (voucherId, voucherData) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/vouchers/${voucherId}`, {
+            const response = await fetch(`${API_URL}/api/vouchers/${voucherId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(voucherData)
@@ -78,7 +80,7 @@ const Vouchers = () => {
 
     const handleToggleStatus = async (voucher) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/vouchers/${voucher._id}/toggle-status`, {
+            const response = await fetch(`${API_URL}/api/vouchers/${voucher._id}/toggle-status`, {
                 method: 'PUT'
             });
 
@@ -100,7 +102,7 @@ const Vouchers = () => {
         }
 
         try {
-            const response = await fetch(`http://localhost:5000/api/vouchers/${voucherId}`, {
+            const response = await fetch(`${API_URL}/api/vouchers/${voucherId}`, {
                 method: 'DELETE'
             });
 

@@ -5,6 +5,8 @@ import { useSnackbar } from 'notistack';
 import StaffList from '../components/staff/StaffList';
 import StaffEdit from './StaffEdit';
 import DeleteConfirmationModal from '../components/common/DeleteConfirmationModal';
+import API_URL from '../config/api';
+
 
 const Staff = () => {
     const { enqueueSnackbar } = useSnackbar();
@@ -25,7 +27,7 @@ const Staff = () => {
     const loadStaff = async () => {
         try {
             setLoading(true);
-            const res = await fetch('http://localhost:5000/api/staff');
+            const res = await fetch(`${API_URL}/api/staff`);
             const data = await res.json();
             setStaff(data);
         } catch (err) {
@@ -70,7 +72,7 @@ const Staff = () => {
     const handleToggleStatus = async (row) => {
         const nextStatus = row.status === 'Active' ? 'Deactivated' : 'Active';
         try {
-            await fetch(`http://localhost:5000/api/staff/${row._id}/status`, {
+            await fetch(`${API_URL}/api/staff/${row._id}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: nextStatus })
@@ -86,7 +88,7 @@ const Staff = () => {
     const handleAddAdvance = async (payload) => {
         if (!editingStaff?._id) return;
         try {
-            await fetch(`http://localhost:5000/api/staff/${editingStaff._id}/advances`, {
+            await fetch(`${API_URL}/api/staff/${editingStaff._id}/advances`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -107,7 +109,7 @@ const Staff = () => {
     const handleConfirmDelete = async () => {
         if (!staffToDelete) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/staff/${staffToDelete._id}`, {
+            const res = await fetch(`${API_URL}/api/staff/${staffToDelete._id}`, {
                 method: 'DELETE'
             });
             if (res.ok) {

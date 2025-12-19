@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { ArrowLeft } from 'lucide-react';
+import API_URL from '../config/api';
+
 
 const roles = [
     'Pharmacist',
@@ -80,7 +82,7 @@ const StaffEdit = ({ staff: staffProp, onBack, onSave: onSaveProp, onAddAdvance:
                 setLoading(true);
                 // Even if we have staffProp, we might want to refresh from API 
                 // to get the latest permissions/history/advances
-                const res = await fetch(`http://localhost:5000/api/staff/${effectiveId}`);
+                const res = await fetch(`${API_URL}/api/staff/${effectiveId}`);
                 const data = await res.json();
                 const s = data.staff || data;
 
@@ -91,8 +93,8 @@ const StaffEdit = ({ staff: staffProp, onBack, onSave: onSaveProp, onAddAdvance:
                 setPermissions(data.permissions || {});
 
                 const [advRes, payRes] = await Promise.all([
-                    fetch(`http://localhost:5000/api/staff/${effectiveId}/advances`),
-                    fetch(`http://localhost:5000/api/staff/${effectiveId}/payments`)
+                    fetch(`${API_URL}/api/staff/${effectiveId}/advances`),
+                    fetch(`${API_URL}/api/staff/${effectiveId}/payments`)
                 ]);
                 setAdvances(await advRes.json());
                 setPayments(await payRes.json());
@@ -128,7 +130,7 @@ const StaffEdit = ({ staff: staffProp, onBack, onSave: onSaveProp, onAddAdvance:
 
         try {
             if (isNew) {
-                const res = await fetch('http://localhost:5000/api/staff', {
+                const res = await fetch(`${API_URL}/api/staff`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -143,12 +145,12 @@ const StaffEdit = ({ staff: staffProp, onBack, onSave: onSaveProp, onAddAdvance:
                 }
             } else {
                 const [res, permRes] = await Promise.all([
-                    fetch(`http://localhost:5000/api/staff/${effectiveId}`, {
+                    fetch(`${API_URL}/api/staff/${effectiveId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     }),
-                    fetch(`http://localhost:5000/api/staff/${effectiveId}/permissions`, {
+                    fetch(`${API_URL}/api/staff/${effectiveId}/permissions`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(permissions)

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { ArrowLeft } from 'lucide-react';
+import API_URL from '../config/api';
+
 
 const StaffAddAdvance = () => {
     const { id } = useParams();
@@ -15,7 +17,7 @@ const StaffAddAdvance = () => {
     useEffect(() => {
         const load = async () => {
             try {
-                const res = await fetch(`http://localhost:5000/api/staff/${id}`);
+                const res = await fetch(`${API_URL}/api/staff/${id}`);
                 const data = await res.json();
                 setStaffName(data.staff?.name || data.name || '');
             } catch (err) {
@@ -31,7 +33,7 @@ const StaffAddAdvance = () => {
         const value = parseFloat(amount);
         if (!value || value <= 0) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/staff/${id}/advances`, {
+            const res = await fetch(`${API_URL}/api/staff/${id}/advances`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

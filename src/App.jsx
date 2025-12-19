@@ -9,6 +9,7 @@ import Inventory from './pages/Inventory';
 import SupplierDetails from './pages/SupplierDetails';
 import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import API_URL from './config/api';
 
 import Users from './pages/Users';
 import Customers from './pages/Customers';
@@ -30,7 +31,7 @@ function App() {
     const checkSetup = async () => {
       try {
         console.log('Checking system setup status...');
-        const response = await fetch('http://localhost:5000/api/system/status');
+        const response = await fetch(`${API_URL}/api/system/status`);
         const data = await response.json();
         console.log('Setup status received:', data);
         setSetupStatus({ isSetupCompleted: data.isSetupCompleted, loading: false });

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, User, Trash2, RotateCcw, Save, FileText, ArrowLeft, Calendar, AlertCircle, Printer, Eye, X, Package } from 'lucide-react';
 import { useSnackbar } from 'notistack';
+import API_URL from '../config/api';
+
 
 const Return = () => {
     const [medicines, setMedicines] = useState([]);
@@ -95,7 +97,7 @@ const Return = () => {
 
     const fetchSupplies = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplies');
+            const response = await fetch(`${API_URL}/api/supplies`);
             const data = await response.json();
             setSupplies(data);
         } catch (error) {
@@ -105,7 +107,7 @@ const Return = () => {
 
     const fetchMedicines = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/medicines');
+            const response = await fetch(`${API_URL}/api/medicines`);
             const data = await response.json();
             setMedicines(data.filter(med => med.inInventory));
         } catch (error) {
@@ -115,7 +117,7 @@ const Return = () => {
 
     const fetchCustomers = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/customers');
+            const response = await fetch(`${API_URL}/api/customers`);
             const data = await response.json();
             setCustomers(data);
         } catch (error) {
@@ -164,7 +166,7 @@ const Return = () => {
 
     const fetchTransactions = async (startDate = '', endDate = '') => {
         try {
-            let url = 'http://localhost:5000/api/transactions?';
+            let url = `${API_URL}/api/transactions?`;
             const params = new URLSearchParams();
             if (startDate) params.append('startDate', startDate);
             if (endDate) params.append('endDate', endDate);
@@ -300,7 +302,7 @@ const Return = () => {
         // Look up the actual medicine to get the numeric ID
         let medicineId = item.id;
         try {
-            const response = await fetch('http://localhost:5000/api/medicines');
+            const response = await fetch(`${API_URL}/api/medicines`);
             const medicines = await response.json();
             const medicine = medicines.find(m => m._id === itemId || m.id === item.id);
             if (medicine) {
@@ -471,7 +473,7 @@ const Return = () => {
 
             console.log('Transaction Data:', JSON.stringify(transactionData, null, 2));
 
-            const response = await fetch('http://localhost:5000/api/transactions', {
+            const response = await fetch(`${API_URL}/api/transactions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(transactionData)

@@ -5,6 +5,8 @@ import { useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import AddToInventoryModal from '../components/inventory/AddToInventoryModal';
 import EditInventoryModal from '../components/inventory/EditInventoryModal';
+import API_URL from '../config/api';
+
 // import { categories } from '../data/mockData'; // Removed unused import
 
 const Inventory = () => {
@@ -49,7 +51,7 @@ const Inventory = () => {
 
     const fetchMedicines = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/medicines');
+            const response = await fetch(`${API_URL}/api/medicines`);
             const data = await response.json();
             setMedicines(data);
         } catch (error) {
@@ -60,7 +62,7 @@ const Inventory = () => {
 
     const fetchSupplies = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplies');
+            const response = await fetch(`${API_URL}/api/supplies`);
             const data = await response.json();
             setSupplies(data);
         } catch (error) {
@@ -70,7 +72,7 @@ const Inventory = () => {
 
     const fetchEnrichedLowStock = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/medicines/low-stock');
+            const response = await fetch(`${API_URL}/api/medicines/low-stock`);
             const data = await response.json();
             setEnrichedLowStockItems(data);
         } catch (error) {
@@ -85,7 +87,7 @@ const Inventory = () => {
                 inInventory: true
             };
 
-            const response = await fetch(`http://localhost:5000/api/medicines/${medicineId}`, {
+            const response = await fetch(`${API_URL}/api/medicines/${medicineId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -106,7 +108,7 @@ const Inventory = () => {
 
     const handleUpdateInventory = async (medicineId, formData) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/medicines/${medicineId}`, {
+            const response = await fetch(`${API_URL}/api/medicines/${medicineId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -167,7 +169,7 @@ const Inventory = () => {
             const promises = selectedItems.map(id => {
                 // Find item to get current data or just send patch if API supports it.
                 // Reusing handleUpdateInventory logic but customized for bulk.
-                return fetch(`http://localhost:5000/api/medicines/${id}`, {
+                return fetch(`${API_URL}/api/medicines/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: newStatus })

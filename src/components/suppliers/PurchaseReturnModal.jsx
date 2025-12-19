@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Package, AlertCircle } from 'lucide-react';
 import { useSnackbar } from 'notistack';
+import API_URL from '../../config/api';
+
 
 const PurchaseReturnModal = ({ isOpen, onClose, supplierId, supplierName, onConfirm }) => {
     const { enqueueSnackbar } = useSnackbar();
@@ -30,7 +32,7 @@ const PurchaseReturnModal = ({ isOpen, onClose, supplierId, supplierName, onConf
     const fetchSupplies = async () => {
         try {
             // Fetch all supplies for this supplier
-            const response = await fetch('http://localhost:5000/api/supplies');
+            const response = await fetch(`${API_URL}/api/supplies`);
             const data = await response.json();
             // Filter client-side or use a refined API. 
             // We have a generic /api/supplies, let's filter by supplierName

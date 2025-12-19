@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Ticket, Calendar, DollarSign } from 'lucide-react';
+import API_URL from '../../config/api';
+
 
 const VoucherSelectionModal = ({ isOpen, onClose, onSelectVoucher, currentVoucher }) => {
     const [vouchers, setVouchers] = useState([]);
@@ -15,7 +17,7 @@ const VoucherSelectionModal = ({ isOpen, onClose, onSelectVoucher, currentVouche
     const fetchVouchers = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/api/vouchers');
+            const response = await fetch(`${API_URL}/api/vouchers`);
             const data = await response.json();
             // Filter only active vouchers
             setVouchers(data.filter(v => v.status === 'Active'));
