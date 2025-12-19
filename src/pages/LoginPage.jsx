@@ -29,7 +29,7 @@ const LoginPage = () => {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
                 enqueueSnackbar('Login Successful', { variant: 'success' });
-                navigate('/');
+                navigate('/dashboard');
             } else {
                 enqueueSnackbar(data.message || 'Login failed', { variant: 'error' });
             }
