@@ -16,12 +16,12 @@ const Customers = () => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
-    const [dateFilter, setDateFilter] = useState('All');
+    const [dateFilter, setDateFilter] = useState('Today');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
 
     useEffect(() => {
-        fetchCustomers();
+        handleDateFilterChange('Today');
     }, []);
 
     const fetchCustomers = async (startDate = null, endDate = null) => {
@@ -188,14 +188,14 @@ const Customers = () => {
                         <CalendarIcon size={20} />
                         <span className="font-medium">Filter by Join Date:</span>
                     </div>
-                    {['All', 'Week', 'Month', 'Year', 'Custom'].map((filter) => (
+                    {[ 'Today', 'Yesterday', 'Week', 'Month', 'Custom'].map((filter) => (
                         <button
                             key={filter}
                             onClick={() => handleDateFilterChange(filter)}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${dateFilter === filter
                                 ? 'bg-green-500 text-white shadow-lg shadow-green-500/20'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
+                              }`}
                         >
                             {filter}
                         </button>
@@ -233,8 +233,8 @@ const Customers = () => {
                             onClick={() => {
                                 setCustomStartDate('');
                                 setCustomEndDate('');
-                                setDateFilter('All');
-                                fetchCustomers();
+                                setDateFilter('Today');
+                                handleDateFilterChange('Today');
                             }}
                             className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-medium hover:bg-gray-200 transition-colors"
                         >
