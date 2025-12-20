@@ -245,7 +245,6 @@ const supplierSchema = new mongoose.Schema({
     phone: String,
     email: String,
     address: String,
-    openingBalance: { type: Number, default: 0 },
     totalPayable: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now }
 });
@@ -1029,7 +1028,7 @@ app.get('/api/customers', async (req, res) => {
 
                 // Parse the joinDate string
                 const joinDateObj = new Date(customer.joinDate);
-                
+
                 // Check for invalid date
                 if (isNaN(joinDateObj.getTime())) return false;
 
@@ -1373,7 +1372,20 @@ app.post('/api/transactions', async (req, res) => {
 app.get('/api/suppliers', async (req, res) => {
     try {
         const suppliers = await Supplier.find().sort({ name: 1 });
-        res.json(suppliers);
+
+        // Add payment status to each supplier
+        const suppliersWithStatus = suppliers.map(supplier => {
+            const paymentStatus = (supplier.totalPayable || 0) > 0 ? 'Due' : 'Paid';
+            const dueAmount = supplier.totalPayable || 0;
+
+            return {
+                ...supplier.toObject(),
+                paymentStatus,
+                dueAmount
+            };
+        });
+
+        res.json(suppliersWithStatus);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -1407,23 +1419,7 @@ app.get('/api/suppliers/:id', async (req, res) => {
         // --- 1. Ledger Construction with Running Balance ---
         let ledger = [];
 
-        // Add Opening Balance
-        if (supplier.openingBalance !== 0 && supplier.openingBalance !== undefined) {
-            ledger.push({
-                id: 'opening',
-                date: supplier.createdAt,
-                type: 'Opening Balance',
-                ref: 'Opening Balance', // Normalized ref
-                amount: Math.abs(supplier.openingBalance),
-                status: 'Posted',
-                isDebit: supplier.openingBalance < 0, // Negative opening means we paid in advance? usually Opening Balance is net payable.
-                // Requirement: "Supplier's Net Payable".
-                // If Opening Balance is positive, we OWE them (Credit).
-                // If Opening Balance is negative, they OWE us (Debit).
-                isCredit: supplier.openingBalance > 0,
-                // runningBalance will be calculated later
-            });
-        }
+        // No more opening balance - start fresh with only actual transactions
 
         const supplyEntries = supplies.map(s => {
             const totalCost = (s.quantity || 0) * (s.purchaseCost || 0);
@@ -1470,16 +1466,12 @@ app.get('/api/suppliers/:id', async (req, res) => {
         }));
 
         // Merge and Sort by Date Ascending for Running Balance Calculation
-        // Note: We sort ASC first to calculate running balance, then usually return DESC or let frontend sort.
-        // Let's return DESC but calculate ASC.
         let allEntries = [...ledger, ...supplyEntries, ...paymentEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        let currentBalance = 0; // Starts at 0, builds up
+        let currentBalance = 0; // Starts at 0, builds up from actual transactions only
 
         allEntries = allEntries.map(entry => {
-            if (entry.id === 'opening') {
-                currentBalance += (supplier.openingBalance || 0);
-            } else if (entry.isCredit) {
+            if (entry.isCredit) {
                 // Invoice increases Payable
                 currentBalance += (entry.amount || 0);
             } else if (entry.isDebit) {
@@ -1559,15 +1551,23 @@ app.get('/api/suppliers/:id', async (req, res) => {
             .filter(p => p.method === 'Debit Note')
             .reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
+        // Separate actual cash/bank payments from debit notes
         const cashBankMethods = ['Cash', 'Bank Transfer', 'Check'];
-        const totalPaid = payments
+        const cashPayments = payments
             .filter(p => cashBankMethods.includes(p.method))
             .reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
+        // Net Purchases = Gross Invoices - Returns
         const totalPurchased = grossPurchased - totalReturns;
-        // Use calculations for balance to ensure it matches ledger exactly if needed, 
-        // but typically globalBalance from ledger is safest source of truth.
-        const balance = globalBalance;
+
+        // CRITICAL: Total Paid = ONLY Cash/Bank/Check (DO NOT add returns)
+        const totalPaid = cashPayments;
+
+        // Balance = Net Purchases - Payments (can be negative for supplier credit)
+        const balance = totalPurchased - totalPaid;
+
+        // If balance is negative, we have a credit with the supplier
+        const supplierCredit = balance < 0 ? Math.abs(balance) : 0;
 
         res.json({
             supplier,
@@ -1575,7 +1575,10 @@ app.get('/api/suppliers/:id', async (req, res) => {
             stats: {
                 totalPurchased,
                 totalPaid,
+                cashPayments,
+                totalReturns,
                 balance,
+                supplierCredit,
                 totalSKUs,
                 totalQuantity,
                 overdueAmount,
@@ -1713,24 +1716,12 @@ app.post('/api/suppliers/return', async (req, res) => {
         });
         const savedDebitNote = await debitNote.save();
 
-        // 2. Reduce Stock (Global Medicine Stock + Specific Supply Batch)
+        // 2. Reduce Stock (ONLY Global Medicine Stock - DO NOT modify original invoice)
+        // IMPORTANT: We do NOT modify the original Supply/Invoice record.
+        // The original invoice must remain at its purchase value.
+        // The Debit Note (created above) handles the accounting for the return.
         for (const item of items) {
-            // A. Update Specific Supply Batch (If available)
-            if (item.supplyId) {
-                const supplyRecord = await Supply.findById(item.supplyId);
-                if (supplyRecord) {
-                    if (item.quantity > supplyRecord.quantity) {
-                        throw new Error(`Cannot return ${item.quantity} for ${supplyRecord.name}. Only ${supplyRecord.quantity} available in this batch.`);
-                    }
-                    console.log(`[RETURN] Reducing Batch Quantity for ${supplyRecord.name}. Old: ${supplyRecord.quantity}, Return: ${item.quantity}`);
-                    supplyRecord.quantity -= item.quantity;
-                    await supplyRecord.save();
-                } else {
-                    console.warn(`[RETURN] Supply record ${item.supplyId} not found.`);
-                }
-            }
-
-            // B. Update Global Medicine Stock
+            // Update ONLY Global Medicine Stock (for inventory tracking)
             let medicine = null;
             if (item.medicineId) {
                 // Try finding by ID (could be number or string)
@@ -1748,11 +1739,6 @@ app.post('/api/suppliers/return', async (req, res) => {
 
             if (medicine) {
                 if (medicine.stock < item.quantity) {
-                    // Check if we want to enforce global stock limit strictly? 
-                    // Users might have discrepancy. But usually return implies physical goods leaving.
-                    // Let's warn but allow if batch valid? Or block?
-                    // User said: "not present in the stock currently fix this issue"
-                    // So we should Block.
                     throw new Error(`Insufficient global stock for ${medicine.name}. Stock: ${medicine.stock}, Return: ${item.quantity}`);
                 }
                 console.log(`[RETURN] Reducing stock for ${medicine.name}. Old: ${medicine.stock}, Return: ${item.quantity}`);
@@ -1838,6 +1824,165 @@ app.delete('/api/suppliers/:id', async (req, res) => {
         });
 
     } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Clear Supplier History (Reset to New)
+app.post('/api/suppliers/:id/clear-history', async (req, res) => {
+    try {
+        const supplier = await Supplier.findById(req.params.id);
+        if (!supplier) return res.status(404).json({ message: 'Supplier not found' });
+
+        console.log(`[CLEAR HISTORY] Clearing all transactions for supplier: ${supplier.name}`);
+
+        // 1. Delete all associated Supplies
+        const deletedSupplies = await Supply.deleteMany({
+            supplierName: { $regex: new RegExp(`^${supplier.name}$`, 'i') }
+        });
+        console.log(`[CLEAR HISTORY] Removed ${deletedSupplies.deletedCount} supplies`);
+
+        // 2. Delete all associated Payments
+        const deletedPayments = await Payment.deleteMany({ supplierId: supplier._id });
+        console.log(`[CLEAR HISTORY] Removed ${deletedPayments.deletedCount} payments`);
+
+        // 3. Delete all associated ItemPayments
+        const deletedItemPayments = await ItemPayment.deleteMany({ supplierId: supplier._id });
+        console.log(`[CLEAR HISTORY] Removed ${deletedItemPayments.deletedCount} item payments`);
+
+        // 4. Reset supplier's totalPayable to 0
+        supplier.totalPayable = 0;
+        await supplier.save();
+        console.log(`[CLEAR HISTORY] Reset supplier balance to 0`);
+
+        res.json({
+            message: `Successfully cleared all transaction history for ${supplier.name}`,
+            details: {
+                suppliesRemoved: deletedSupplies.deletedCount,
+                paymentsRemoved: deletedPayments.deletedCount,
+                itemPaymentsRemoved: deletedItemPayments.deletedCount
+            }
+        });
+
+    } catch (err) {
+        console.error('[CLEAR HISTORY] Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Apply Supplier Credit to Invoice
+app.post('/api/suppliers/:id/apply-credit', async (req, res) => {
+    try {
+        const { amount, supplyIds, note } = req.body;
+        const supplier = await Supplier.findById(req.params.id);
+        if (!supplier) return res.status(404).json({ message: 'Supplier not found' });
+
+        // Calculate current balance to verify available credit
+        const supplies = await Supply.find({
+            supplierName: { $regex: new RegExp(`^${supplier.name}$`, 'i') }
+        });
+        const payments = await Payment.find({ supplierId: supplier._id });
+
+        const grossPurchased = supplies.reduce((acc, curr) => acc + ((curr.quantity || 0) * (curr.purchaseCost || 0)), 0);
+        const totalReturns = payments.filter(p => p.method === 'Debit Note').reduce((acc, curr) => acc + (curr.amount || 0), 0);
+        const cashPayments = payments.filter(p => ['Cash', 'Bank Transfer', 'Check', 'Credit Application', 'Cash Refund'].includes(p.method)).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+        const netPurchases = grossPurchased - totalReturns;
+        const currentBalance = netPurchases - cashPayments;
+        const supplierCredit = currentBalance < 0 ? Math.abs(currentBalance) : 0;
+
+        if (supplierCredit < amount) {
+            return res.status(400).json({ message: `Insufficient credit balance. Available: Rs. ${supplierCredit.toFixed(2)}` });
+        }
+
+        console.log(`[APPLY CREDIT] Applying Rs. ${amount} credit for ${supplier.name}`);
+
+        // Create a payment record with "Credit Application" method
+        const creditPayment = new Payment({
+            supplierId: supplier._id,
+            amount,
+            date: new Date(),
+            method: 'Credit Application',
+            note: note || `Credit applied to ${supplyIds ? supplyIds.length : 0} invoice(s)`
+        });
+        const savedPayment = await creditPayment.save();
+
+        // If specific supplies are provided, mark them as paid
+        if (supplyIds && supplyIds.length > 0) {
+            for (const supplyId of supplyIds) {
+                const supply = await Supply.findById(supplyId);
+                if (supply) {
+                    const totalCost = supply.quantity * supply.purchaseCost;
+                    const remaining = totalCost - (supply.paidAmount || 0);
+                    const paymentForThis = Math.min(remaining, amount);
+
+                    supply.paidAmount = (supply.paidAmount || 0) + paymentForThis;
+                    if (supply.paidAmount >= totalCost) {
+                        supply.paymentStatus = 'Paid';
+                    } else if (supply.paidAmount > 0) {
+                        supply.paymentStatus = 'Partial';
+                    }
+                    await supply.save();
+                }
+            }
+        }
+
+        res.status(201).json({
+            message: 'Credit applied successfully',
+            payment: savedPayment,
+            remainingCredit: supplierCredit - amount
+        });
+
+    } catch (err) {
+        console.error('[APPLY CREDIT] Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Record Cash Refund from Supplier
+app.post('/api/suppliers/:id/record-refund', async (req, res) => {
+    try {
+        const { amount, note, date } = req.body;
+        const supplier = await Supplier.findById(req.params.id);
+        if (!supplier) return res.status(404).json({ message: 'Supplier not found' });
+
+        // Calculate current credit balance
+        const supplies = await Supply.find({
+            supplierName: { $regex: new RegExp(`^${supplier.name}$`, 'i') }
+        });
+        const payments = await Payment.find({ supplierId: supplier._id });
+
+        const grossPurchased = supplies.reduce((acc, curr) => acc + ((curr.quantity || 0) * (curr.purchaseCost || 0)), 0);
+        const totalReturns = payments.filter(p => p.method === 'Debit Note').reduce((acc, curr) => acc + (curr.amount || 0), 0);
+        const cashPayments = payments.filter(p => ['Cash', 'Bank Transfer', 'Check', 'Credit Application', 'Cash Refund'].includes(p.method)).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+        const netPurchases = grossPurchased - totalReturns;
+        const currentBalance = netPurchases - cashPayments;
+        const supplierCredit = currentBalance < 0 ? Math.abs(currentBalance) : 0;
+
+        if (supplierCredit < amount) {
+            return res.status(400).json({ message: `Cannot refund more than credit balance. Available: Rs. ${supplierCredit.toFixed(2)}` });
+        }
+
+        console.log(`[CASH REFUND] Recording refund of Rs. ${amount} from ${supplier.name}`);
+
+        // Create a "Cash Refund" payment record
+        // This is a payment FROM supplier TO us, reducing our credit
+        const refundPayment = new Payment({
+            supplierId: supplier._id,
+            amount,
+            date: date || new Date(),
+            method: 'Cash Refund',
+            note: note || `Cash refund received from supplier`
+        });
+        const savedRefund = await refundPayment.save();
+
+        res.status(201).json({
+            message: 'Cash refund recorded successfully',
+            refund: savedRefund,
+            remainingCredit: supplierCredit - amount
+        });
+
+    } catch (err) {
+        console.error('[CASH REFUND] Error:', err);
         res.status(500).json({ message: err.message });
     }
 });

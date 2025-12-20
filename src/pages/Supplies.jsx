@@ -391,13 +391,13 @@ const Supplies = () => {
                                     </th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Contact Details</th>
-
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Payment Status</th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {loading ? (
-                                    <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-400">Loading suppliers...</td></tr>
+                                    <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-400">Loading suppliers...</td></tr>
                                 ) : sortedSuppliers.length > 0 ? (
                                     sortedSuppliers.map((supplier) => (
                                         <tr
@@ -435,6 +435,25 @@ const Supplies = () => {
                                             </td>
 
                                             <td className="px-6 py-4">
+                                                <div className="flex items-center justify-center">
+                                                    {supplier.paymentStatus === 'Paid' ? (
+                                                        <span className="px-3 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">
+                                                            ✓ Paid
+                                                        </span>
+                                                    ) : (
+                                                        <div className="flex flex-col items-center gap-1">
+                                                            <span className="px-3 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-700">
+                                                                Due
+                                                            </span>
+                                                            <span className="text-xs font-bold text-red-600">
+                                                                Rs. {supplier.dueAmount?.toLocaleString() || '0'}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            <td className="px-6 py-4">
                                                 <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={(e) => openEditSupplierModal(e, supplier)}
@@ -459,7 +478,7 @@ const Supplies = () => {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="5" className="px-6 py-12 text-center text-gray-400">
+                                        <td colSpan="6" className="px-6 py-12 text-center text-gray-400">
                                             <div className="flex flex-col items-center gap-3">
                                                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-300">
                                                     <Truck size={32} />

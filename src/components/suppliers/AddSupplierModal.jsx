@@ -7,9 +7,7 @@ const AddSupplierModal = ({ isOpen, onClose, onConfirm, initialData = null, isEd
         contactPerson: '',
         phone: '',
         email: '',
-        address: '',
-        openingBalanceType: 'None',
-        openingBalanceAmount: ''
+        address: ''
     });
 
     useEffect(() => {
@@ -19,9 +17,7 @@ const AddSupplierModal = ({ isOpen, onClose, onConfirm, initialData = null, isEd
                 contactPerson: initialData.contactPerson || '',
                 phone: initialData.phone || '',
                 email: initialData.email || '',
-                address: initialData.address || '',
-                openingBalanceType: 'None',
-                openingBalanceAmount: ''
+                address: initialData.address || ''
             });
         } else if (!isOpen) {
             // Reset form when modal closes
@@ -30,9 +26,7 @@ const AddSupplierModal = ({ isOpen, onClose, onConfirm, initialData = null, isEd
                 contactPerson: '',
                 phone: '',
                 email: '',
-                address: '',
-                openingBalanceType: 'None',
-                openingBalanceAmount: ''
+                address: ''
             });
         }
     }, [isEditMode, initialData, isOpen]);
@@ -44,38 +38,8 @@ const AddSupplierModal = ({ isOpen, onClose, onConfirm, initialData = null, isEd
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (isEditMode) {
-            // For edit mode, exclude opening balance fields
-            const payload = {
-                name: formData.name,
-                contactPerson: formData.contactPerson,
-                phone: formData.phone,
-                email: formData.email,
-                address: formData.address
-            };
-            onConfirm(payload);
-        } else {
-            // For add mode, include opening balance calculation
-            let balance = 0;
-            const amount = parseFloat(formData.openingBalanceAmount) || 0;
-
-            if (formData.openingBalanceType === 'Payable') {
-                balance = amount;
-            } else if (formData.openingBalanceType === 'Advance') {
-                balance = -amount;
-            }
-
-            const payload = {
-                ...formData,
-                openingBalance: balance,
-                totalPayable: balance
-            };
-
-            delete payload.openingBalanceType;
-            delete payload.openingBalanceAmount;
-
-            onConfirm(payload);
-        }
+        // Send the form data directly without any opening balance calculation
+        onConfirm(formData);
     };
 
     if (!isOpen) return null;
@@ -154,38 +118,6 @@ const AddSupplierModal = ({ isOpen, onClose, onConfirm, initialData = null, isEd
                             placeholder="Office address..."
                         ></textarea>
                     </div>
-
-                    {!isEditMode && (
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Opening Balance Type</label>
-                                <select
-                                    name="openingBalanceType"
-                                    value={formData.openingBalanceType}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition-all appearance-none bg-white"
-                                >
-                                    <option value="None">None (0)</option>
-                                    <option value="Payable">Payable (We owe them)</option>
-                                    <option value="Advance">Advance (They owe us)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                                <input
-                                    type="number"
-                                    name="openingBalanceAmount"
-                                    value={formData.openingBalanceAmount}
-                                    onChange={handleChange}
-                                    disabled={formData.openingBalanceType === 'None'}
-                                    min="0"
-                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition-all ${formData.openingBalanceType === 'None' ? 'bg-gray-100 text-gray-400' : ''
-                                        }`}
-                                    placeholder="0.00"
-                                />
-                            </div>
-                        </div>
-                    )}
 
                     <div className="pt-4 flex justify-end gap-3">
                         <button

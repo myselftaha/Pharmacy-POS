@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Wallet, TrendingDown, Package, Plus, FileText, AlertCircle, Clock, Calendar } from 'lucide-react';
+import { ArrowLeft, Wallet, TrendingDown, Package, Plus, FileText, AlertCircle, Clock, Calendar, RotateCcw } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import RecordPaymentModal from '../components/suppliers/RecordPaymentModal';
 import InvoiceDetailsModal from '../components/invoices/InvoiceDetailsModal';
@@ -17,7 +17,10 @@ const SupplierDetails = () => {
     const [stats, setStats] = useState({
         totalPurchased: 0,
         totalPaid: 0,
+        cashPayments: 0,
+        totalReturns: 0,
         balance: 0,
+        supplierCredit: 0,
         totalSKUs: 0,
         totalQuantity: 0,
         overdueAmount: 0,
@@ -110,6 +113,37 @@ const SupplierDetails = () => {
         setIsPaymentModalOpen(true);
     };
 
+    const handleClearHistory = async () => {
+        if (!window.confirm(
+            `⚠️ WARNING: This will permanently delete ALL transactions for ${supplier.name}.\n\n` +
+            `This includes:\n` +
+            `- All invoices/purchases\n` +
+            `- All payments\n` +
+            `- All returns\n\n` +
+            `The supplier will be reset to a fresh state with zero balance.\n\n` +
+            `Are you absolutely sure you want to continue?`
+        )) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/api/suppliers/${id}/clear-history`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showToast('Supplier history cleared successfully!', 'success');
+                fetchSupplierDetails(); // Refresh the page
+            } else {
+                const error = await response.json();
+                showToast(error.message || 'Failed to clear history', 'error');
+            }
+        } catch (error) {
+            console.error('Error clearing history:', error);
+            showToast('Error clearing supplier history', 'error');
+        }
+    };
+
     const activeList = useMemo(() => {
         let list = history;
 
@@ -190,6 +224,14 @@ const SupplierDetails = () => {
                 </div>
                 <div className="flex gap-3">
                     <button
+                        onClick={handleClearHistory}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold hover:bg-gray-200 transition-colors"
+                        title="Clear all transactions and reset supplier"
+                    >
+                        <RotateCcw size={18} />
+                        <span>Clear History</span>
+                    </button>
+                    <button
                         onClick={() => setIsReturnModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg font-bold hover:bg-red-200 transition-colors"
                     >
@@ -225,36 +267,53 @@ const SupplierDetails = () => {
                     </div>
                 </div>
 
-                {/* 2. Total Paid */}
+                {/* 2. Total Paid (Cash/Bank Only) */}
                 <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
                         <div className="p-2 bg-green-50 rounded-lg text-green-600">
                             <TrendingDown size={20} />
                         </div>
-                        <span className="text-xs font-semibold px-2 py-1 bg-gray-50 text-gray-600 rounded-lg">Payments</span>
+                        <span className="text-xs font-semibold px-2 py-1 bg-gray-50 text-gray-600 rounded-lg">Cash Payments</span>
                     </div>
                     <div>
                         <h3 className="text-xl font-bold text-gray-900">Rs. {stats.totalPaid?.toLocaleString()}</h3>
-                        <p className="text-xs text-gray-500 mt-1">Lifetime payments</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Cash/Bank/Check only
+                            {stats.totalReturns > 0 && ` • Returns: Rs. ${stats.totalReturns?.toLocaleString()}`}
+                        </p>
                     </div>
                 </div>
 
-                {/* 3. Net Payable */}
-                <div className={`p-5 rounded-2xl border shadow-sm ring-1 ${stats.balance > 0 ? 'bg-white border-red-100 ring-red-50' : 'bg-white border-gray-100 ring-gray-50'}`}>
+                {/* 3. Net Payable / Supplier Credit */}
+                <div className={`p-5 rounded-2xl border shadow-sm ring-1 ${stats.balance > 0 ? 'bg-white border-red-100 ring-red-50' :
+                    stats.balance < 0 ? 'bg-white border-blue-100 ring-blue-50' :
+                        'bg-white border-green-100 ring-green-50'
+                    }`}>
                     <div className="flex justify-between items-start mb-2">
-                        <div className={`p-2 rounded-lg ${stats.balance > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                        <div className={`p-2 rounded-lg ${stats.balance > 0 ? 'bg-red-50 text-red-600' :
+                            stats.balance < 0 ? 'bg-blue-50 text-blue-600' :
+                                'bg-green-50 text-green-600'
+                            }`}>
                             <Wallet size={20} />
                         </div>
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${stats.balance > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'}`}>
-                            Net Payable
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${stats.balance > 0 ? 'bg-red-50 text-red-600' :
+                            stats.balance < 0 ? 'bg-blue-50 text-blue-600' :
+                                'bg-green-50 text-green-600'
+                            }`}>
+                            {stats.balance > 0 ? 'Net Payable' : stats.balance < 0 ? 'Supplier Credit' : 'Net Payable'}
                         </span>
                     </div>
                     <div>
-                        <h3 className={`text-xl font-bold ${stats.balance > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                        <h3 className={`text-xl font-bold ${stats.balance > 0 ? 'text-red-600' :
+                            stats.balance < 0 ? 'text-blue-600' :
+                                'text-green-600'
+                            }`}>
                             Rs. {Math.abs(stats.balance || 0).toLocaleString()}
                         </h3>
                         <p className="text-xs text-gray-500 mt-1">
-                            {stats.balance > 0 ? 'You owe them' : stats.balance < 0 ? 'Advance Payment' : 'Settled'}
+                            {stats.balance > 0 ? 'You owe them' :
+                                stats.balance < 0 ? 'They owe you (Credit)' :
+                                    'Fully Settled ✓'}
                         </p>
                     </div>
                 </div>
@@ -370,8 +429,8 @@ const SupplierDetails = () => {
 
                                         {filter === 'All' && (
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${item.type === 'Invoice' || item.type === 'Opening Balance' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                                                    {item.type === 'Opening Balance' ? 'Opening' : item.type}
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${item.type === 'Invoice' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                                    {item.type}
                                                 </span>
                                             </td>
                                         )}
@@ -396,7 +455,7 @@ const SupplierDetails = () => {
                                         </td>
 
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            {item.type === 'Invoice' || item.type === 'Opening Balance' ? (
+                                            {item.type === 'Invoice' ? (
                                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${item.status === 'Settled' ? 'bg-green-100 text-green-700' :
                                                     item.status === 'Partial' ? 'bg-yellow-100 text-yellow-700' :
                                                         'bg-red-100 text-red-700'
@@ -411,10 +470,10 @@ const SupplierDetails = () => {
                                         </td>
 
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-medium">
-                                            {(item.isBill || item.type === 'Invoice' || (item.type === 'Opening Balance' && item.isBill)) ? `Rs. ${item.amount?.toLocaleString()}` : '-'}
+                                            {item.type === 'Invoice' ? `Rs. ${item.amount?.toLocaleString()}` : '-'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-medium">
-                                            {(item.isPayment || item.type === 'Payment' || item.type === 'Debit Note' || (item.type === 'Opening Balance' && item.isPayment)) ? `Rs. ${item.amount?.toLocaleString()}` : '-'}
+                                            {(item.type === 'Payment' || item.type === 'Debit Note') ? `Rs. ${item.amount?.toLocaleString()}` : '-'}
                                         </td>
 
                                         {/* Running Balance */}
