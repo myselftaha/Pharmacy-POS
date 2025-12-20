@@ -1021,27 +1021,30 @@ app.get('/api/customers', async (req, res) => {
 
         // Date filtering based on joinDate
         if (startDate || endDate) {
-            // Note: joinDate is stored as string, need to convert for comparison
+            // Note: joinDate is stored as string "MMM DD, YYYY"
             const customers = await Customer.find();
 
             const filtered = customers.filter(customer => {
                 if (!customer.joinDate) return true; // Include customers without join date
 
-                // Parse the joinDate string (format: "MMM DD, YYYY")
+                // Parse the joinDate string
                 const joinDateObj = new Date(customer.joinDate);
+                
+                // Check for invalid date
+                if (isNaN(joinDateObj.getTime())) return false;
+
+                // Format to YYYY-MM-DD using local components to match the stored date's intent
+                const year = joinDateObj.getFullYear();
+                const month = String(joinDateObj.getMonth() + 1).padStart(2, '0');
+                const day = String(joinDateObj.getDate()).padStart(2, '0');
+                const joinDateStr = `${year}-${month}-${day}`;
 
                 if (startDate && endDate) {
-                    const start = new Date(startDate);
-                    const end = new Date(endDate);
-                    end.setHours(23, 59, 59, 999);
-                    return joinDateObj >= start && joinDateObj <= end;
+                    return joinDateStr >= startDate && joinDateStr <= endDate;
                 } else if (startDate) {
-                    const start = new Date(startDate);
-                    return joinDateObj >= start;
+                    return joinDateStr >= startDate;
                 } else if (endDate) {
-                    const end = new Date(endDate);
-                    end.setHours(23, 59, 59, 999);
-                    return joinDateObj <= end;
+                    return joinDateStr <= endDate;
                 }
                 return true;
             });

@@ -44,21 +44,39 @@ const Customers = () => {
         }
     };
 
+    // Helper to format date as YYYY-MM-DD in local time
+    const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     // Calculate date ranges based on filter
     const getDateRange = (filter) => {
         const now = new Date();
         let startDate = null;
-        let endDate = now.toISOString().split('T')[0];
+        let endDate = formatDate(now);
 
         switch (filter) {
+            case 'Today':
+                startDate = formatDate(now);
+                endDate = formatDate(now);
+                break;
+            case 'Yesterday':
+                const yesterday = new Date(now);
+                yesterday.setDate(yesterday.getDate() - 1);
+                startDate = formatDate(yesterday);
+                endDate = formatDate(yesterday);
+                break;
             case 'Week':
-                startDate = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
+                const lastWeek = new Date(now);
+                lastWeek.setDate(lastWeek.getDate() - 7);
+                startDate = formatDate(lastWeek);
                 break;
             case 'Month':
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-                break;
-            case 'Year':
-                startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                startDate = formatDate(thisMonth);
                 break;
             case 'Custom':
                 return { startDate: customStartDate, endDate: customEndDate };
