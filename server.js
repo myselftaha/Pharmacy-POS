@@ -1397,8 +1397,7 @@ app.post('/api/transactions', async (req, res) => {
                 await Customer.findByIdAndUpdate(
                     customer.id,
                     {
-                        // Note: totalPurchases usually tracks # of visits, so we might still incr or leave it.
-                        // Let's increment it as an "activity" but reduce totalSpent.
+
                         $inc: {
                             totalPurchases: 1,
                             totalSpent: finalTotal // finalTotal is negative
@@ -1487,8 +1486,8 @@ app.get('/api/suppliers', async (req, res) => {
         const suppliers = await Supplier.find().sort({ name: 1 });
         let updated = false;
 
-        // One-time Lazy Migration/Normalization: 
-        // If totalPayable is negative, move it to creditBalance to support the new "Separated Credit" model.
+
+
         for (const supplier of suppliers) {
             if (supplier.totalPayable < 0) {
                 const creditAmount = Math.abs(supplier.totalPayable);
@@ -1597,9 +1596,7 @@ app.get('/api/suppliers/:id', async (req, res) => {
         });
 
         const paymentEntries = payments.map(p => {
-            // Cash Refund increases what we owe (or reduces our credit asset). 
-            // So it behaves like an Invoice (Credit) in the ledger flow relative to Net Payable.
-            // Normal Payment / Debit Note reduces what we owe (Debit).
+
             const isRefund = p.method === 'Cash Refund';
 
             return {
@@ -2050,6 +2047,13 @@ app.delete('/api/suppliers/:id', async (req, res) => {
                     // Reduce stock
                     const qtyToRemove = supply.quantity || 0;
                     medicine.stock = Math.max(0, (medicine.stock || 0) - qtyToRemove); // Prevent negative
+
+                    // FX: If stock becomes 0, remove it from inventory/low stock lists (Deactivate)
+                    if (medicine.stock === 0) {
+                        medicine.inInventory = false;
+                        console.log(`[Supplier Delete] Deactivated ${medicine.name} as stock reached 0.`);
+                    }
+
                     await medicine.save();
                     stockReducedCount++;
                     console.log(`[Supplier Delete] Reduced stock for ${medicine.name} by ${qtyToRemove}. New: ${medicine.stock}`);
@@ -2063,33 +2067,12 @@ app.delete('/api/suppliers/:id', async (req, res) => {
             suppliesRemovedCount = deletedSuppliesResult.deletedCount;
 
         } else {
-            // OPTION B: Delete Supplier ONLY (Keep Stock)
-            // We do NOT reduce stock.
-            // We do NOT delete supplies (preserve history).
-            // BUT we should probably unlink them so they don't point to a ghost name?
-            // Actually, keeping the name "Supplier X" in the supply record is good for history, 
-            // even if the Supplier profile is gone.
 
-            // However, to avoid confusion in the future, maybe mark them?
-            // " (Deleted)" suffix?
-            // Let's leave them as is. The user asked to "only delete the supplier".
 
             console.log(`[Supplier Delete] Preserving ${supplies.length} supply records and their stock.`);
         }
 
-        // 3. Delete Associated Payments?
-        // If we keep supplies, we should probably keep payments too?
-        // But the Payment schema has a 'ref' to Supplier. deleting Supplier will break populate if used.
-        // User asked: "only delete the supplier" -> usually implies address book removal.
-        // But if we delete the supplier doc, any ref to it breaks.
-        // Let's delete Payments if deleteStock is true (clean slate).
-        // If deleteStock is false, maybe keep them but they will be orphaned.
-        // Given the ambiguity, usually "Delete Supplier" implies cleaning up the entity. 
-        // The *Stock* is the critical tangible asset the user is worried about.
-        // Let's delete the payments in both cases to avoid orphans crashing the system, 
-        // OR we just leave them.
-        // Let's delete payments because they are financial records of the *supplier relationship*. 
-        // If the supplier is gone, the "Credit Balance" is gone too.
+
 
         await Payment.deleteMany({ supplierId: supplier._id });
         await ItemPayment.deleteMany({ supplierId: supplier._id });
