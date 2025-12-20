@@ -23,6 +23,8 @@ import StaffPaySalary from './pages/StaffPaySalary';
 import StaffAddAdvance from './pages/StaffAddAdvance';
 import OwnerSetup from './pages/OwnerSetup';
 import LoaderDemo from './pages/LoaderDemo';
+import Loader from './components/common/Loader';
+
 function App() {
   const [setupStatus, setSetupStatus] = useState({ isSetupCompleted: false, loading: true });
 
@@ -44,6 +46,14 @@ function App() {
 
 
   const isSetup = setupStatus.isSetupCompleted;
+
+  if (setupStatus.loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <Loader type="spinner" size="lg" />
+      </div>
+    );
+  }
 
   const RootRedirect = () => {
     const userStr = localStorage.getItem('user');
