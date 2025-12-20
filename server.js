@@ -1976,15 +1976,16 @@ app.get('/api/transactions/stats/summary', async (req, res) => {
         let returns = 0;
         let netSales = 0;
         let itemsSold = 0;
-        let billsCount = transactions.length;
+        let billsCount = 0;
         let cashSales = 0;
         let cardSales = 0;
         let creditSales = 0; // On-account
 
         transactions.forEach(t => {
-            // Skip voided transactions for main stats, OR handle them separately?
-            // "Net Sales" should definitely exclude voided.
+            // Skip voided transactions for main stats
             if (t.status === 'Voided') return;
+
+            billsCount++;
 
             const isReturn = t.type === 'Return';
             const amount = Math.abs(t.total);
@@ -1998,11 +1999,7 @@ app.get('/api/transactions/stats/summary', async (req, res) => {
                 // Or just track it separately. Usually Net Items = Sold - Returned.
                 itemsSold -= itemCount;
             } else {
-                grossSales += (t.subtotal || amount); // Gross usually before discount/tax? Or Subtotal + Discount?
-                // If subtotal is stored: Subtotal = (Price * Qty). Total = Subtotal - Discount + Tax.
                 // Gross Sales = Sum of Subtotals (List Price Volume).
-
-                // Let's assume t.subtotal is the sum of line items.
                 // If t.subtotal missing, use total.
                 grossSales += (t.subtotal !== undefined ? t.subtotal : amount);
                 itemsSold += itemCount;
