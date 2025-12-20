@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Wallet, TrendingDown, Package, Plus, FileText, AlertCircle, Clock, Calendar, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Wallet, TrendingDown, Package, Plus, FileText, AlertCircle, Clock, Calendar, RotateCcw, DollarSign } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import RecordPaymentModal from '../components/suppliers/RecordPaymentModal';
 import InvoiceDetailsModal from '../components/invoices/InvoiceDetailsModal';
 import PurchaseReturnModal from '../components/suppliers/PurchaseReturnModal';
+import CashRefundModal from '../components/suppliers/CashRefundModal';
 import API_URL from '../config/api';
 
 
@@ -31,6 +32,7 @@ const SupplierDetails = () => {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+    const [isRefundModalOpen, setIsRefundModalOpen] = useState(false); // New State
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [filter, setFilter] = useState('All');
     const [monthFilter, setMonthFilter] = useState('All');
@@ -81,6 +83,31 @@ const SupplierDetails = () => {
         } catch (error) {
             console.error('Error recording payment:', error);
             showToast('Error recording payment', 'error');
+        }
+    };
+
+    const handleCashRefund = async (amount) => {
+        try {
+            const response = await fetch(`${API_URL}/api/suppliers/refund`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    supplierId: id,
+                    amount: amount
+                })
+            });
+
+            if (response.ok) {
+                showToast('Cash refund recorded successfully!', 'success');
+                setIsRefundModalOpen(false);
+                fetchSupplierDetails();
+            } else {
+                const error = await response.json();
+                showToast(error.message || 'Failed to record refund', 'error');
+            }
+        } catch (error) {
+            console.error('Error recording refund:', error);
+            showToast('Error recording refund', 'error');
         }
     };
 
@@ -315,6 +342,16 @@ const SupplierDetails = () => {
                                 stats.balance < 0 ? 'They owe you (Credit)' :
                                     'Fully Settled ✓'}
                         </p>
+                        {/* Cash Refund Button */}
+                        {stats.storedCredit > 0 && (
+                            <button
+                                onClick={() => setIsRefundModalOpen(true)}
+                                className="w-full mt-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <DollarSign size={14} />
+                                Record Cash Refund
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -519,6 +556,7 @@ const SupplierDetails = () => {
                 onClose={() => setIsPaymentModalOpen(false)}
                 onConfirm={handleRecordPayment}
                 supplierBalance={stats.balance}
+                creditBalance={stats.storedCredit} // Pass stored credit
                 supplierId={id}
                 selectedInvoice={selectedInvoice}
             />
@@ -548,6 +586,14 @@ const SupplierDetails = () => {
                         showToast('Error processing return', 'error');
                     }
                 }}
+            />
+
+            <CashRefundModal
+                isOpen={isRefundModalOpen}
+                onClose={() => setIsRefundModalOpen(false)}
+                onConfirm={handleCashRefund}
+                creditBalance={stats.storedCredit || 0}
+                supplierName={supplier.name}
             />
 
             <InvoiceDetailsModal

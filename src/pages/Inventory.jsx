@@ -736,10 +736,10 @@ const Inventory = () => {
                                                 {/* Supplier Info */}
                                                 <td className="px-6 py-4">
                                                     <div className="space-y-1">
-                                                        {item.preferredSupplierId ? (
+                                                        {item.preferredSupplierId || item.supplier ? (
                                                             <>
                                                                 <div className="font-medium text-sm text-gray-800">
-                                                                    {item.preferredSupplierId.name || 'N/A'}
+                                                                    {item.preferredSupplierId?.name || item.supplier || 'N/A'}
                                                                 </div>
                                                                 <div className="text-xs text-gray-500">
                                                                     Lead: {item.leadTimeDays || 7} days

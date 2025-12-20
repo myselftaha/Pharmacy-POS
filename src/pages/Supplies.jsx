@@ -6,6 +6,7 @@ import SupplyTable from '../components/supplies/SupplyTable';
 import AddMedicineModal from '../components/supplies/AddMedicineModal';
 import EditSupplyModal from '../components/supplies/EditSupplyModal';
 import DeleteConfirmationModal from '../components/common/DeleteConfirmationModal';
+import DeleteSupplierModal from '../components/suppliers/DeleteSupplierModal';
 import AddSupplierModal from '../components/suppliers/AddSupplierModal';
 import API_URL from '../config/api';
 
@@ -248,16 +249,18 @@ const Supplies = () => {
         setIsDeleteSupplierModalOpen(true);
     };
 
-    const confirmDeleteSupplier = async () => {
+    const confirmDeleteSupplier = async (deleteStock) => {
         if (!supplierToDelete) return;
 
         try {
-            const response = await fetch(`${API_URL}/api/suppliers/${supplierToDelete._id}`, {
+            // Pass the choice via query parameter
+            const response = await fetch(`${API_URL}/api/suppliers/${supplierToDelete._id}?deleteStock=${deleteStock}`, {
                 method: 'DELETE'
             });
 
             if (response.ok) {
-                showToast('Supplier deleted successfully!', 'success');
+                const result = await response.json();
+                showToast(result.message || 'Supplier deleted successfully!', 'success');
                 fetchSuppliers();
                 setIsDeleteSupplierModalOpen(false);
                 setSupplierToDelete(null);
@@ -540,13 +543,11 @@ const Supplies = () => {
 
             />
 
-            <DeleteConfirmationModal
+            <DeleteSupplierModal
                 isOpen={isDeleteSupplierModalOpen}
                 onClose={() => setIsDeleteSupplierModalOpen(false)}
                 onConfirm={confirmDeleteSupplier}
-                itemName={supplierToDelete?.name}
-                title="Delete Supplier?"
-                message="Are you sure you want to delete this supplier? This will also remove their transaction history."
+                supplierName={supplierToDelete?.name}
             />
         </div>
     );

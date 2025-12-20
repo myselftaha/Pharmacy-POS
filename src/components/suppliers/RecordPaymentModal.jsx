@@ -3,7 +3,7 @@ import { X, DollarSign, Calendar, CreditCard, FileText } from 'lucide-react';
 import API_URL from '../../config/api';
 
 
-const RecordPaymentModal = ({ isOpen, onClose, onConfirm, supplierBalance = 0, selectedInvoice = null, supplierId }) => {
+const RecordPaymentModal = ({ isOpen, onClose, onConfirm, supplierBalance = 0, creditBalance = 0, selectedInvoice = null, supplierId }) => {
     const [allowAdvance, setAllowAdvance] = useState(false);
     const [error, setError] = useState('');
     const [selectedItems, setSelectedItems] = useState([]);
@@ -67,16 +67,22 @@ const RecordPaymentModal = ({ isOpen, onClose, onConfirm, supplierBalance = 0, s
             return;
         }
 
-        const creditAvailable = supplierBalance < 0 ? Math.abs(supplierBalance) : 0;
+        const creditAvailable = creditBalance || (supplierBalance < 0 ? Math.abs(supplierBalance) : 0);
 
-        // Prevent Cash payment if Credit is sufficient
-        if (creditAvailable >= totalSelectedAmount && formData.method !== 'Credit Adjustment' && !allowAdvance) {
-            setError(`You have Rs. ${creditAvailable.toLocaleString()} credit. Please use "Credit Adjustment" to pay from your existing balance.`);
+        // Prevent Cash payment if Credit is sufficient (encourage using credit)
+        if (creditAvailable >= totalSelectedAmount && formData.method !== 'Supplier Credit' && !allowAdvance) {
+            setError(`You have Rs. ${creditAvailable.toLocaleString()} credit. Please use "Supplier Credit" to pay from your existing balance.`);
+            return;
+        }
+
+        // Validate Credit Balance if using Supplier Credit
+        if (formData.method === 'Supplier Credit' && totalSelectedAmount > creditAvailable) {
+            setError(`Insufficient Supplier Credit (Rs. ${creditAvailable.toLocaleString()}).`);
             return;
         }
 
         // Logic for regular payments (prevent overpaying debt)
-        if (!allowAdvance && formData.method !== 'Credit Adjustment' && supplierBalance > 0 && totalSelectedAmount > supplierBalance) {
+        if (!allowAdvance && formData.method !== 'Supplier Credit' && supplierBalance > 0 && totalSelectedAmount > supplierBalance) {
             setError(`Amount exceeds payable balance (Rs. ${supplierBalance}). Enable "Allow Advance" to proceed.`);
             return;
         }
@@ -248,7 +254,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onConfirm, supplierBalance = 0, s
                                     <option value="Cash">Cash</option>
                                     <option value="Bank Transfer">Bank Transfer</option>
                                     <option value="Check">Check</option>
-                                    <option value="Credit Adjustment">Credit Adjustment (Use Return)</option>
+                                    <option value="Supplier Credit">Supplier Credit (Pay via Balance)</option>
                                 </select>
                             </div>
                         </div>

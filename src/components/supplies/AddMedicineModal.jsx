@@ -240,6 +240,85 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
                         </div>
                     </div>
 
+                    {/* Section 2.5: Payment Preference */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Payment Options</h3>
+                        <div className="flex flex-col gap-3">
+                            {/* Supplier Credit Option */}
+                            {formData.supplierName && (() => {
+                                const selectedSupplier = suppliers?.find(s => s.name === formData.supplierName);
+                                const credit = selectedSupplier?.creditBalance || 0;
+                                const totalCost = (parseFloat(formData.stock) || 0) * (parseFloat(formData.purchaseCost) || 0);
+
+                                return (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="useCredit"
+                                            name="useCredit"
+                                            disabled={credit <= 0}
+                                            checked={formData.useCredit || false}
+                                            onChange={(e) => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    useCredit: e.target.checked,
+                                                    // If using credit, disable manual paid amount? Or allow mix? 
+                                                    // Let's mutually exclude 'Record Payment' if full credit used?
+                                                    // For simplicity: If Use Credit is checked, it tries to pay FULL.
+                                                    paidAmount: e.target.checked ? '' : prev.paidAmount
+                                                }));
+                                            }}
+                                            className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                                        />
+                                        <label htmlFor="useCredit" className={`text-sm font-medium ${credit <= 0 ? 'text-gray-400' : 'text-gray-700'}`}>
+                                            Use Supplier Credit (Available: <span className="font-bold">Rs. {credit.toLocaleString()}</span>)
+                                        </label>
+                                        {formData.useCredit && (credit < totalCost) && (
+                                            <span className="text-xs text-red-500 font-bold ml-2">Warning: Insufficient credit for full payment.</span>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Manual Payment Option */}
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="recordPayment"
+                                    disabled={formData.useCredit} // Disable if using credit (simplify UX)
+                                    checked={!!formData.paidAmount && !formData.useCredit}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            const total = (parseFloat(formData.stock) || 0) * (parseFloat(formData.purchaseCost) || 0);
+                                            setFormData(prev => ({ ...prev, paidAmount: total }));
+                                        } else {
+                                            setFormData(prev => ({ ...prev, paidAmount: '' }));
+                                        }
+                                    }}
+                                    className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                                />
+                                <label htmlFor="recordPayment" className="text-sm font-medium text-gray-700">
+                                    Record Cash/Bank Payment Now
+                                </label>
+                            </div>
+
+                            {/* Paid Amount Input */}
+                            {(!!formData.paidAmount && !formData.useCredit) && (
+                                <div className="ml-6">
+                                    <label className="block text-xs font-medium text-gray-500 mb-1">Amount Paid</label>
+                                    <input
+                                        type="number"
+                                        name="paidAmount"
+                                        value={formData.paidAmount}
+                                        onChange={handleChange}
+                                        className="w-48 px-3 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Section 3: Batch & Supplier Info */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                         <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Batch & Supplier</h3>
