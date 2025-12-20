@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, ShieldCheck, Loader2 } from 'lucide-react';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import API_URL from '../config/api';
 
 
@@ -14,7 +14,7 @@ const OwnerSetup = ({ onComplete }) => {
     });
     const [loading, setLoading] = useState(false);
     const [checking, setChecking] = useState(true);
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -42,7 +42,7 @@ const OwnerSetup = ({ onComplete }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (formData.password !== formData.confirmPassword) {
-            enqueueSnackbar('Passwords do not match', { variant: 'error' });
+            showToast('Passwords do not match', 'error');
             return;
         }
 
@@ -60,14 +60,14 @@ const OwnerSetup = ({ onComplete }) => {
             const data = await response.json();
 
             if (response.ok) {
-                enqueueSnackbar('System setup successful! Please login.', { variant: 'success' });
+                showToast('System setup successful! Please login.', 'success');
                 if (onComplete) onComplete();
                 navigate('/login');
             } else {
-                enqueueSnackbar(data.message || 'Setup failed', { variant: 'error' });
+                showToast(data.message || 'Setup failed', 'error');
             }
         } catch (err) {
-            enqueueSnackbar('Network error: Could not connect to server', { variant: 'error' });
+            showToast('Network error: Could not connect to server', 'error');
         } finally {
             setLoading(false);
         }

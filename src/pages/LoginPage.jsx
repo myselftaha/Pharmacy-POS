@@ -13,14 +13,14 @@ import {
     ClipboardList,
     ShieldCheck
 } from 'lucide-react';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import API_URL from '../config/api';
 
 const LoginPage = () => {
     const [credentials, setCredentials] = useState({ username: '', password: '' });
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -40,13 +40,13 @@ const LoginPage = () => {
             if (response.ok) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
-                enqueueSnackbar('Login Successful', { variant: 'success' });
+                showToast('Login Successful', 'success');
                 navigate('/');
             } else {
-                enqueueSnackbar(data.message || 'Login failed', { variant: 'error' });
+                showToast(data.message || 'Login failed', 'error');
             }
         } catch (err) {
-            enqueueSnackbar('Network error: Could not connect to backend', { variant: 'error' });
+            showToast('Network error: Could not connect to backend', 'error');
         } finally {
             setLoading(false);
         }

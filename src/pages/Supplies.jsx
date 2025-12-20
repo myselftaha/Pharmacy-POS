@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import { Search, Plus, Filter, Package, Users, Phone, Edit2, Trash2, Truck } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SupplyTable from '../components/supplies/SupplyTable';
@@ -10,7 +10,7 @@ import AddSupplierModal from '../components/suppliers/AddSupplierModal';
 import API_URL from '../config/api';
 
 const Supplies = () => {
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -82,11 +82,11 @@ const Supplies = () => {
                 const data = await response.json();
                 setSupplies(data);
             } else {
-                enqueueSnackbar('Failed to fetch supplies', { variant: 'error' });
+                showToast('Failed to fetch supplies', 'error');
             }
         } catch (error) {
             console.error('Error fetching supplies:', error);
-            enqueueSnackbar('Error fetching supplies', { variant: 'error' });
+            showToast('Error fetching supplies', 'error');
         }
     };
 
@@ -103,14 +103,14 @@ const Supplies = () => {
                 await fetchSuppliers(); // Refresh suppliers too
                 setIsAddModalOpen(false);
                 setPreSelectedSupplier(null);
-                enqueueSnackbar('Supply added successfully!', { variant: 'success' });
+                showToast('Supply added successfully!', 'success');
             } else {
                 const errorData = await response.json();
-                enqueueSnackbar(errorData.message || 'Failed to add supply', { variant: 'error' });
+                showToast(errorData.message || 'Failed to add supply', 'error');
             }
         } catch (error) {
             console.error('Error saving supply:', error);
-            enqueueSnackbar('Error saving supply', { variant: 'error' });
+            showToast('Error saving supply', 'error');
         }
     };
 
@@ -131,14 +131,14 @@ const Supplies = () => {
                 await fetchSupplies();
                 setIsEditModalOpen(false);
                 setSelectedSupply(null);
-                enqueueSnackbar('Supply updated successfully!', { variant: 'success' });
+                showToast('Supply updated successfully!', 'success');
             } else {
                 const errorData = await response.json();
-                enqueueSnackbar(errorData.message || 'Failed to update supply', { variant: 'error' });
+                showToast(errorData.message || 'Failed to update supply', 'error');
             }
         } catch (error) {
             console.error('Error updating supply:', error);
-            enqueueSnackbar('Error updating supply', { variant: 'error' });
+            showToast('Error updating supply', 'error');
         }
     };
 
@@ -161,14 +161,14 @@ const Supplies = () => {
                 await fetchSuppliers(); // Refresh suppliers too
                 setIsDeleteModalOpen(false);
                 setSupplyToDelete(null);
-                enqueueSnackbar('Supply deleted successfully!', { variant: 'success' });
+                showToast('Supply deleted successfully!', 'success');
             } else {
                 const errorData = await response.json();
-                enqueueSnackbar(errorData.message || 'Failed to delete supply', { variant: 'error' });
+                showToast(errorData.message || 'Failed to delete supply', 'error');
             }
         } catch (error) {
             console.error('Error deleting supply:', error);
-            enqueueSnackbar('Error deleting supply', { variant: 'error' });
+            showToast('Error deleting supply', 'error');
         }
     };
 
@@ -192,7 +192,7 @@ const Supplies = () => {
             setSuppliers(data);
         } catch (error) {
             console.error('Error fetching suppliers:', error);
-            enqueueSnackbar('Failed to fetch suppliers', { variant: 'error' });
+            showToast('Failed to fetch suppliers', 'error');
         } finally {
             setLoading(false);
         }
@@ -207,16 +207,16 @@ const Supplies = () => {
             });
 
             if (response.ok) {
-                enqueueSnackbar('Supplier added successfully!', { variant: 'success' });
+                showToast('Supplier added successfully!', 'success');
                 setIsAddSupplierModalOpen(false);
                 fetchSuppliers();
             } else {
                 const errorData = await response.json();
-                enqueueSnackbar(errorData.message || 'Failed to add supplier', { variant: 'error' });
+                showToast(errorData.message || 'Failed to add supplier', 'error');
             }
         } catch (error) {
             console.error('Error adding supplier:', error);
-            enqueueSnackbar(error.message || 'Error adding supplier', { variant: 'error' });
+            showToast(error.message || 'Error adding supplier', 'error');
         }
     };
 
@@ -229,17 +229,17 @@ const Supplies = () => {
             });
 
             if (response.ok) {
-                enqueueSnackbar('Supplier updated successfully!', { variant: 'success' });
+                showToast('Supplier updated successfully!', 'success');
                 setIsEditSupplierModalOpen(false);
                 setEditingSupplier(null);
                 fetchSuppliers();
             } else {
                 const errorData = await response.json();
-                enqueueSnackbar(errorData.message || 'Failed to update supplier', { variant: 'error' });
+                showToast(errorData.message || 'Failed to update supplier', 'error');
             }
         } catch (error) {
             console.error('Error updating supplier:', error);
-            enqueueSnackbar('Error updating supplier', { variant: 'error' });
+            showToast('Error updating supplier', 'error');
         }
     };
 
@@ -257,17 +257,17 @@ const Supplies = () => {
             });
 
             if (response.ok) {
-                enqueueSnackbar('Supplier deleted successfully!', { variant: 'success' });
+                showToast('Supplier deleted successfully!', 'success');
                 fetchSuppliers();
                 setIsDeleteSupplierModalOpen(false);
                 setSupplierToDelete(null);
             } else {
                 const errorData = await response.json();
-                enqueueSnackbar(errorData.message || 'Failed to delete supplier', { variant: 'error' });
+                showToast(errorData.message || 'Failed to delete supplier', 'error');
             }
         } catch (error) {
             console.error('Error deleting supplier:', error);
-            enqueueSnackbar('Error deleting supplier', { variant: 'error' });
+            showToast('Error deleting supplier', 'error');
         }
     };
 

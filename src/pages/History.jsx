@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import { Search, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import TransactionTable from '../components/history/TransactionTable';
@@ -13,7 +13,7 @@ import API_URL from '../config/api';
 
 const History = () => {
     const navigate = useNavigate();
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
 
     // Data State
     const [transactions, setTransactions] = useState([]);
@@ -79,7 +79,7 @@ const History = () => {
 
         } catch (error) {
             console.error('Error fetching data:', error);
-            enqueueSnackbar('Failed to load history data', { variant: 'error' });
+            showToast('Failed to load history data', 'error');
         } finally {
             setLoading(false);
         }
@@ -135,7 +135,7 @@ const History = () => {
         if (customDates.start && customDates.end) {
             fetchTransactions(1);
         } else {
-            enqueueSnackbar('Please select both start and end dates', { variant: 'warning' });
+            showToast('Please select both start and end dates', 'warning');
         }
     };
 
@@ -207,10 +207,10 @@ const History = () => {
             // Export
             XLSX.writeFile(wb, fileName);
             // Show generic success message without transaction count
-            enqueueSnackbar('Exported transactions to Excel', { variant: 'success' });
+            showToast('Exported transactions to Excel', 'success');
 
         } catch (error) {
-            enqueueSnackbar('Export failed', { variant: 'error' });
+            showToast('Export failed', 'error');
         } finally {
             setLoading(false);
         }
@@ -239,22 +239,22 @@ const History = () => {
                 throw new Error(err.message || 'Failed to void');
             }
 
-            enqueueSnackbar('Transaction voided successfully', { variant: 'success' });
+            showToast('Transaction voided successfully', 'success');
             fetchTransactions(pagination.page); // Refresh
         } catch (error) {
-            enqueueSnackbar(error.message, { variant: 'error' });
+            showToast(error.message, 'error');
         }
     };
 
     const handleReturn = (transaction) => {
 
-        alert(`Initiating return for ${transaction.transactionId}. (Feature: Navigate to POS Return Mode)`);
+        showToast(`Initiating return for ${transaction.transactionId}. (Feature: Navigate to POS Return Mode)`, 'info');
         // navigate('/pos', { state: { returnTransaction: transaction } }); // If POS supports this
     };
 
     const handleDuplicate = (transaction) => {
         // Add items to cart?
-        alert(`Duplicating order with ${transaction.items.length} items. (Feature: Add to Cart)`);
+        showToast(`Duplicating order with ${transaction.items.length} items. (Feature: Add to Cart)`, 'info');
     };
 
     return (

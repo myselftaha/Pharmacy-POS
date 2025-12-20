@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Mail, Phone, MapPin, Calendar as CalendarIcon } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 import AddCustomerModal from '../components/customers/AddCustomerModal';
 import ViewCustomerModal from '../components/customers/ViewCustomerModal';
 import EditCustomerModal from '../components/customers/EditCustomerModal';
@@ -7,6 +8,7 @@ import API_URL from '../config/api';
 
 
 const Customers = () => {
+    const { showToast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
     const [customers, setCustomers] = useState([]);
     const [filteredCustomers, setFilteredCustomers] = useState([]);
@@ -36,6 +38,7 @@ const Customers = () => {
             setFilteredCustomers(data);
         } catch (error) {
             console.error('Error fetching customers:', error);
+            showToast('Failed to fetch customers', 'error');
             setCustomers([]);
             setFilteredCustomers([]);
         }
@@ -99,13 +102,14 @@ const Customers = () => {
             if (response.ok) {
                 await fetchCustomers(); // Refresh list
                 setIsAddModalOpen(false);
+                showToast('Customer added successfully', 'success');
             } else {
                 const errorText = await response.text();
-                alert('Failed to save customer: ' + errorText);
+                showToast('Failed to save customer: ' + errorText, 'error');
             }
         } catch (error) {
             console.error('Error adding customer:', error);
-            alert('Error adding customer: ' + error.message);
+            showToast('Error adding customer: ' + error.message, 'error');
         }
     };
 
@@ -131,13 +135,14 @@ const Customers = () => {
                 await fetchCustomers(); // Refresh list
                 setIsEditModalOpen(false);
                 setSelectedCustomer(null);
+                showToast('Customer updated successfully', 'success');
             } else {
                 const errorText = await response.text();
-                alert('Failed to update customer: ' + errorText);
+                showToast('Failed to update customer: ' + errorText, 'error');
             }
         } catch (error) {
             console.error('Error updating customer:', error);
-            alert('Error updating customer: ' + error.message);
+            showToast('Error updating customer: ' + error.message, 'error');
         }
     };
 

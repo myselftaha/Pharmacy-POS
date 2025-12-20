@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Wallet, TrendingDown, Package, Plus, FileText, AlertCircle, Clock, Calendar } from 'lucide-react';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import RecordPaymentModal from '../components/suppliers/RecordPaymentModal';
 import InvoiceDetailsModal from '../components/invoices/InvoiceDetailsModal';
 import PurchaseReturnModal from '../components/suppliers/PurchaseReturnModal';
@@ -11,7 +11,7 @@ import API_URL from '../config/api';
 const SupplierDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
     const [supplier, setSupplier] = useState(null);
     const [history, setHistory] = useState([]);
     const [stats, setStats] = useState({
@@ -61,10 +61,10 @@ const SupplierDetails = () => {
 
         } catch (err) {
             console.error(err);
-            enqueueSnackbar('Failed to fetch supplier details', { variant: 'error' });
+            showToast('Failed to fetch supplier details', 'error');
             setLoading(false);
         }
-    }, [id, enqueueSnackbar]);
+    }, [id]);
 
     useEffect(() => {
         fetchSupplierDetails();
@@ -72,12 +72,12 @@ const SupplierDetails = () => {
 
     const handleRecordPayment = async (paymentData) => {
         try {
-            enqueueSnackbar('Payment recorded successfully!', { variant: 'success' });
+            showToast('Payment recorded successfully!', 'success');
             setIsPaymentModalOpen(false);
             fetchSupplierDetails();
         } catch (error) {
             console.error('Error recording payment:', error);
-            enqueueSnackbar('Error recording payment', { variant: 'error' });
+            showToast('Error recording payment', 'error');
         }
     };
 
@@ -95,12 +95,12 @@ const SupplierDetails = () => {
                 }
             }
 
-            enqueueSnackbar('Invoice voided successfully', { variant: 'success' });
+            showToast('Invoice voided successfully', 'success');
             setIsInvoiceModalOpen(false);
             fetchSupplierDetails();
         } catch (error) {
             console.error('Error voiding invoice:', error);
-            enqueueSnackbar('Failed to void invoice', { variant: 'error' });
+            showToast('Failed to void invoice', 'error');
         }
     };
 
@@ -478,15 +478,15 @@ const SupplierDetails = () => {
                         });
 
                         if (response.ok) {
-                            enqueueSnackbar('Purchase Return processed successfully!', { variant: 'success' });
+                            showToast('Purchase Return processed successfully!', 'success');
                             setIsReturnModalOpen(false);
                             fetchSupplierDetails();
                         } else {
-                            enqueueSnackbar('Failed to process return', { variant: 'error' });
+                            showToast('Failed to process return', 'error');
                         }
                     } catch (error) {
                         console.error('Error processing return:', error);
-                        enqueueSnackbar('Error processing return', { variant: 'error' });
+                        showToast('Error processing return', 'error');
                     }
                 }}
             />

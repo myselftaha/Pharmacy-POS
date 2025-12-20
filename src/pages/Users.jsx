@@ -4,7 +4,7 @@ import UserTable from '../components/users/UserTable';
 import AddUserModal from '../components/users/AddUserModal';
 import EditUserModal from '../components/users/EditUserModal';
 import ResetPasswordModal from '../components/users/ResetPasswordModal';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import API_URL from '../config/api';
 
 
@@ -19,7 +19,7 @@ const Users = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
 
     const fetchUsers = async () => {
         try {
@@ -34,7 +34,7 @@ const Users = () => {
             const data = await response.json();
             setUsers(data);
         } catch (err) {
-            enqueueSnackbar('Failed to load users list', { variant: 'error' });
+            showToast('Failed to load users list', 'error');
             console.error(err);
         } finally {
             setLoading(false);
@@ -59,14 +59,14 @@ const Users = () => {
             const data = await response.json();
 
             if (response.ok) {
-                enqueueSnackbar('User created successfully', { variant: 'success' });
+                showToast('User created successfully', 'success');
                 setIsAddModalOpen(false);
                 fetchUsers();
             } else {
-                enqueueSnackbar(data.message || 'Error creating user', { variant: 'error' });
+                showToast(data.message || 'Error creating user', 'error');
             }
         } catch (err) {
-            enqueueSnackbar('Network error: Could not connect to server', { variant: 'error' });
+            showToast('Network error: Could not connect to server', 'error');
         }
     };
 
@@ -83,14 +83,14 @@ const Users = () => {
             });
             const data = await response.json();
             if (response.ok) {
-                enqueueSnackbar('User updated successfully', { variant: 'success' });
+                showToast('User updated successfully', 'success');
                 setIsEditModalOpen(false);
                 fetchUsers();
             } else {
-                enqueueSnackbar(data.message || 'Error updating user', { variant: 'error' });
+                showToast(data.message || 'Error updating user', 'error');
             }
         } catch (err) {
-            enqueueSnackbar('Error updating user', { variant: 'error' });
+            showToast('Error updating user', 'error');
         }
     };
 
@@ -106,14 +106,14 @@ const Users = () => {
                 body: JSON.stringify({ newPassword })
             });
             if (response.ok) {
-                enqueueSnackbar('Password reset successfully', { variant: 'success' });
+                showToast('Password reset successfully', 'success');
                 setIsResetModalOpen(false);
             } else {
                 const data = await response.json();
-                enqueueSnackbar(data.message || 'Error resetting password', { variant: 'error' });
+                showToast(data.message || 'Error resetting password', 'error');
             }
         } catch (err) {
-            enqueueSnackbar('Error resetting password', { variant: 'error' });
+            showToast('Error resetting password', 'error');
         }
     };
 
@@ -130,14 +130,14 @@ const Users = () => {
                 body: JSON.stringify({ status: newStatus })
             });
             if (response.ok) {
-                enqueueSnackbar(`User ${newStatus.toLowerCase()} successfully`, { variant: 'info' });
+                showToast(`User ${newStatus.toLowerCase()} successfully`, 'info');
                 fetchUsers();
             } else {
                 const data = await response.json();
-                enqueueSnackbar(data.message || 'Action restricted', { variant: 'warning' });
+                showToast(data.message || 'Action restricted', 'warning');
             }
         } catch (err) {
-            enqueueSnackbar('Action failed', { variant: 'error' });
+            showToast('Action failed', 'error');
         }
     };
 

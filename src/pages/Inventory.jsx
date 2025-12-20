@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Filter, Edit, Clock, AlertTriangle, ChevronDown, Download, CheckSquare, Square, ArrowUpDown, Save, MoreHorizontal, Calendar } from 'lucide-react';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import { useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import AddToInventoryModal from '../components/inventory/AddToInventoryModal';
@@ -25,7 +25,7 @@ const Inventory = () => {
     const [advancedFilters, setAdvancedFilters] = useState({ status: 'All' });
     const [editingPrice, setEditingPrice] = useState({ id: null, value: '' });
     const [enrichedLowStockItems, setEnrichedLowStockItems] = useState([]);
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
     const location = useLocation();
 
     useEffect(() => {
@@ -56,7 +56,7 @@ const Inventory = () => {
             setMedicines(data);
         } catch (error) {
             console.error('Error fetching medicines:', error);
-            enqueueSnackbar('Failed to fetch inventory', { variant: 'error' });
+            showToast('Failed to fetch inventory', 'error');
         }
     };
 
@@ -96,13 +96,13 @@ const Inventory = () => {
             if (response.ok) {
                 await fetchMedicines();
                 setIsAddModalOpen(false);
-                enqueueSnackbar('Product added to inventory successfully!', { variant: 'success' });
+                showToast('Product added to inventory successfully!', 'success');
             } else {
-                enqueueSnackbar('Failed to add to inventory', { variant: 'error' });
+                showToast('Failed to add to inventory', 'error');
             }
         } catch (error) {
             console.error('Error adding to inventory:', error);
-            enqueueSnackbar('Error adding to inventory', { variant: 'error' });
+            showToast('Error adding to inventory', 'error');
         }
     };
 
@@ -117,13 +117,13 @@ const Inventory = () => {
             if (response.ok) {
                 await fetchMedicines();
                 setIsEditModalOpen(false);
-                enqueueSnackbar('Inventory updated successfully!', { variant: 'success' });
+                showToast('Inventory updated successfully!', 'success');
             } else {
-                enqueueSnackbar('Failed to update inventory', { variant: 'error' });
+                showToast('Failed to update inventory', 'error');
             }
         } catch (error) {
             console.error('Error updating inventory:', error);
-            enqueueSnackbar('Error updating inventory', { variant: 'error' });
+            showToast('Error updating inventory', 'error');
         }
     };
 
@@ -161,6 +161,7 @@ const Inventory = () => {
             setEditingPrice({ id: null, value: '' });
         } catch (error) {
             console.error(error);
+            showToast('Failed to update price', 'error');
         }
     };
 
@@ -179,9 +180,9 @@ const Inventory = () => {
             await Promise.all(promises);
             await fetchMedicines();
             setSelectedItems([]);
-            enqueueSnackbar(`Updated status for ${selectedItems.length} items`, { variant: 'success' });
+            showToast(`Updated status for ${selectedItems.length} items`, 'success');
         } catch (error) {
-            enqueueSnackbar('Bulk update failed', { variant: 'error' });
+            showToast('Bulk update failed', 'error');
         }
     };
 
@@ -251,7 +252,7 @@ const Inventory = () => {
 
         // Export
         XLSX.writeFile(wb, fileName);
-        enqueueSnackbar('Exported to Excel', { variant: 'success' });
+        showToast('Exported to Excel', 'success');
     };
 
     // Base filter for search, barcode, and status

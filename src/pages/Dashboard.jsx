@@ -18,7 +18,6 @@ import {
     Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useSnackbar } from 'notistack';
 import API_URL from '../config/api';
 import {
     BarChart,

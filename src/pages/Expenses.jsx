@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Calendar, FileText, DollarSign, Filter, Search, Edit, Download, Upload, X, CheckCircle, AlertCircle, ChevronDown, TrendingUp, TrendingDown, Eye, Printer } from 'lucide-react';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import * as XLSX from 'xlsx';
 import API_URL from '../config/api';
 
@@ -16,7 +16,7 @@ const Expenses = () => {
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
 
     // Role-based access (can be connected to auth system)
     const [userRole] = useState('Admin'); // 'Admin' or 'Staff'
@@ -114,7 +114,7 @@ const Expenses = () => {
             setExpenses(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Error fetching expenses:', error);
-            enqueueSnackbar('Failed to fetch expenses', { variant: 'error' });
+            showToast('Failed to fetch expenses', 'error');
         } finally {
             setLoading(false);
         }
@@ -190,7 +190,7 @@ const Expenses = () => {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) {
-                enqueueSnackbar('File size must be less than 5MB', { variant: 'error' });
+                showToast('File size must be less than 5MB', 'error');
                 return;
             }
             setFormData(prev => ({ ...prev, attachment: file }));
@@ -215,17 +215,17 @@ const Expenses = () => {
             });
 
             if (response.ok) {
-                enqueueSnackbar(`Expense ${editingExpense ? 'updated' : 'added'} successfully`, { variant: 'success' });
+                showToast(`Expense ${editingExpense ? 'updated' : 'added'} successfully`, 'success');
                 setIsFormOpen(false);
                 setEditingExpense(null);
                 resetForm();
                 fetchExpenses();
             } else {
-                enqueueSnackbar(`Failed to ${editingExpense ? 'update' : 'add'} expense`, { variant: 'error' });
+                showToast(`Failed to ${editingExpense ? 'update' : 'add'} expense`, 'error');
             }
         } catch (error) {
             console.error('Error saving expense:', error);
-            enqueueSnackbar('Error saving expense', { variant: 'error' });
+            showToast('Error saving expense', 'error');
         }
     };
 
@@ -265,7 +265,7 @@ const Expenses = () => {
 
     const handleDelete = async (id) => {
         if (userRole !== 'Admin') {
-            enqueueSnackbar('Only admins can delete expenses', { variant: 'error' });
+            showToast('Only admins can delete expenses', 'error');
             return;
         }
 
@@ -277,10 +277,10 @@ const Expenses = () => {
             });
 
             if (response.ok) {
-                enqueueSnackbar('Expense deleted', { variant: 'success' });
+                showToast('Expense deleted', 'success');
                 fetchExpenses();
             } else {
-                enqueueSnackbar('Failed to delete expense', { variant: 'error' });
+                showToast('Failed to delete expense', 'error');
             }
         } catch (error) {
             console.error('Error deleting expense:', error);
@@ -306,7 +306,7 @@ const Expenses = () => {
         XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
         const fileName = `Expenses_${dateFilter}_${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(wb, fileName);
-        enqueueSnackbar('Exported to Excel', { variant: 'success' });
+        showToast('Exported to Excel', 'success');
     };
 
     const handleExportPDF = () => {

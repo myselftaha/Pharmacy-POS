@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, User, Trash2, RotateCcw, Save, FileText, ArrowLeft, Calendar, AlertCircle, Printer, Eye, X, Package } from 'lucide-react';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import API_URL from '../config/api';
 
 
@@ -20,7 +20,7 @@ const Return = () => {
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [supplies, setSupplies] = useState([]);
 
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
 
     useEffect(() => {
         fetchMedicines();
@@ -185,7 +185,7 @@ const Return = () => {
             setFilteredTransactions(sales);
         } catch (error) {
             console.error('Error fetching transactions:', error);
-            enqueueSnackbar('Failed to fetch invoices', { variant: 'error' });
+            showToast('Failed to fetch invoices', 'error');
         }
     };
 
@@ -229,7 +229,7 @@ const Return = () => {
                     if (itemsWithoutReason.length === 0) {
                         setShowConfirmationModal(true);
                     } else {
-                        enqueueSnackbar('Please select a return reason for all items', { variant: 'error' });
+                        showToast('Please select a return reason for all items', 'error');
                     }
                 }
             }
@@ -237,7 +237,7 @@ const Return = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [returnCart, returnMode, filteredMedicines, enqueueSnackbar]);
+    }, [returnCart, returnMode, filteredMedicines, showToast]);
 
     const addToReturnCart = (medicine) => {
         const itemId = medicine._id || medicine.id;
@@ -251,7 +251,7 @@ const Return = () => {
         if (existingItem) {
             const newQty = (parseInt(existingItem.quantity) || 0) + 1;
             if (availableStock > 0 && newQty > availableStock) {
-                enqueueSnackbar(`Cannot return more than ${availableStock} units (available stock)`, { variant: 'warning' });
+                showToast(`Cannot return more than ${availableStock} units (available stock)`, 'warning');
                 return;
             }
             setReturnCart(returnCart.map(item =>
@@ -261,7 +261,7 @@ const Return = () => {
             // Default quantity is 1, but check stock availability
             const initialQty = availableStock > 0 ? 1 : 0;
             if (availableStock === 0) {
-                enqueueSnackbar('No stock available for this item', { variant: 'warning' });
+                showToast('No stock available for this item', 'warning');
                 return;
             }
             setReturnCart([...returnCart, {
@@ -292,10 +292,10 @@ const Return = () => {
         if (newQty > maxQty) {
             const available = maxQty - currentQty;
             if (available <= 0) {
-                enqueueSnackbar(`Already returned full quantity of ${item.name}`, { variant: 'warning' });
+                showToast(`Already returned full quantity of ${item.name}`, 'warning');
                 return;
             }
-            enqueueSnackbar(`Cannot return ${qtyToAdd} units. Only ${available} remaining.`, { variant: 'warning' });
+            showToast(`Cannot return ${qtyToAdd} units. Only ${available} remaining.`, 'warning');
             return;
         }
 
@@ -376,13 +376,13 @@ const Return = () => {
 
         // Check if item has maxQuantity constraint (from invoice)
         if (item.maxQuantity && parsed > item.maxQuantity) {
-            enqueueSnackbar(`Cannot return more than ${item.maxQuantity} units`, { variant: 'error' });
+            showToast(`Cannot return more than ${item.maxQuantity} units`, 'error');
             return;
         }
 
         // Check available stock for manual returns
         if (item.availableStock && parsed > item.availableStock) {
-            enqueueSnackbar(`Cannot return more than ${item.availableStock} units (available stock)`, { variant: 'error' });
+            showToast(`Cannot return more than ${item.availableStock} units (available stock)`, 'error');
             return;
         }
 
@@ -402,7 +402,7 @@ const Return = () => {
         // Check if all items have return reasons
         const itemsWithoutReason = returnCart.filter(item => !item.returnReason || item.returnReason === '');
         if (itemsWithoutReason.length > 0) {
-            enqueueSnackbar('Please select a return reason for all items', { variant: 'error' });
+            showToast('Please select a return reason for all items', 'error');
             return false;
         }
         return true;
@@ -410,7 +410,7 @@ const Return = () => {
 
     const handleShowConfirmation = () => {
         if (returnCart.length === 0) {
-            enqueueSnackbar('Return cart is empty', { variant: 'warning' });
+            showToast('Return cart is empty', 'warning');
             return;
         }
         
@@ -423,7 +423,7 @@ const Return = () => {
 
     const handleProcessReturn = async () => {
         if (returnCart.length === 0) {
-            enqueueSnackbar('Return cart is empty', { variant: 'warning' });
+            showToast('Return cart is empty', 'warning');
             return;
         }
 
@@ -492,7 +492,7 @@ const Return = () => {
                 });
                 setShowConfirmationModal(false);
                 setShowReceiptModal(true);
-                enqueueSnackbar('Return processed successfully! Stock updated.', { variant: 'success' });
+                showToast('Return processed successfully! Stock updated.', 'success');
                 setReturnCart([]);
                 setSelectedCustomer(null);
                 setCustomerSearch('');
@@ -500,11 +500,11 @@ const Return = () => {
                 // Refresh medicines to get latest stock if needed, though not strictly displayed here
                 fetchMedicines();
             } else {
-                enqueueSnackbar('Failed to process return', { variant: 'error' });
+                showToast('Failed to process return', 'error');
             }
         } catch (error) {
             console.error('Error processing return:', error);
-            enqueueSnackbar('Error processing return', { variant: 'error' });
+            showToast('Error processing return', 'error');
         }
     };
 

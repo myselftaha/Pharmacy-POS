@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Download, TrendingUp, TrendingDown, DollarSign, Filter, PieChart as PieChartIcon, ArrowRight } from 'lucide-react';
-import { useSnackbar } from 'notistack';
 import API_URL from '../config/api';
 import {
     BarChart,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import { ArrowLeft } from 'lucide-react';
 import API_URL from '../config/api';
 
@@ -8,7 +8,7 @@ import API_URL from '../config/api';
 const StaffPaySalary = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
 
     const [staff, setStaff] = useState(null);
     const [attendance, setAttendance] = useState({
@@ -28,11 +28,11 @@ const StaffPaySalary = () => {
                 setStaff(data.staff || data);
             } catch (err) {
                 console.error('Failed to load staff for salary', err);
-                enqueueSnackbar('Failed to load staff details', { variant: 'error' });
+                showToast('Failed to load staff details', 'error');
             }
         };
         load();
-    }, [id, enqueueSnackbar]);
+    }, [id]);
 
     if (!staff) {
         return (
@@ -79,15 +79,15 @@ const StaffPaySalary = () => {
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
-                enqueueSnackbar('Salary paid successfully', { variant: 'success' });
+                showToast('Salary paid successfully', 'success');
                 navigate('/staff');
             } else {
                 const data = await res.json();
-                enqueueSnackbar(data.message || 'Failed to pay salary', { variant: 'error' });
+                showToast(data.message || 'Failed to pay salary', 'error');
             }
         } catch (err) {
             console.error('Failed to pay salary', err);
-            enqueueSnackbar('Failed to confirm salary payment', { variant: 'error' });
+            showToast('Failed to confirm salary payment', 'error');
         } finally {
             setSubmitting(false);
         }

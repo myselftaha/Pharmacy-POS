@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Search, Package, AlertCircle } from 'lucide-react';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../../context/ToastContext';
 import API_URL from '../../config/api';
 
 
 const PurchaseReturnModal = ({ isOpen, onClose, supplierId, supplierName, onConfirm }) => {
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [medicines, setMedicines] = useState([]);
     const [supplies, setSupplies] = useState([]);
@@ -50,11 +50,11 @@ const PurchaseReturnModal = ({ isOpen, onClose, supplierId, supplierName, onConf
 
         const qty = parseInt(returnQty);
         if (qty <= 0) {
-            enqueueSnackbar('Invalid quantity', { variant: 'error' });
+            showToast('Invalid quantity', 'error');
             return;
         }
         if (qty > selectedSupply.quantity) {
-            enqueueSnackbar(`Cannot return more than purchased/current stock (${selectedSupply.quantity})`, { variant: 'error' });
+            showToast(`Cannot return more than purchased/current stock (${selectedSupply.quantity})`, 'error');
             return;
         }
 

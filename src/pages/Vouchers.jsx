@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Ticket, Calendar, DollarSign, Users } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 import AddVoucherModal from '../components/vouchers/AddVoucherModal';
 import EditVoucherModal from '../components/vouchers/EditVoucherModal';
 import API_URL from '../config/api';
 
 
 const Vouchers = () => {
+    const { showToast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
     const [vouchers, setVouchers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -41,13 +43,14 @@ const Vouchers = () => {
             if (response.ok) {
                 await fetchVouchers();
                 setIsAddModalOpen(false);
+                showToast('Voucher created successfully', 'success');
             } else {
                 const error = await response.json();
-                alert('Failed to create voucher: ' + error.message);
+                showToast('Failed to create voucher: ' + error.message, 'error');
             }
         } catch (error) {
             console.error('Error creating voucher:', error);
-            alert('Error creating voucher: ' + error.message);
+            showToast('Error creating voucher: ' + error.message, 'error');
         }
     };
 
@@ -68,13 +71,14 @@ const Vouchers = () => {
                 await fetchVouchers();
                 setIsEditModalOpen(false);
                 setSelectedVoucher(null);
+                showToast('Voucher updated successfully', 'success');
             } else {
                 const error = await response.json();
-                alert('Failed to update voucher: ' + error.message);
+                showToast('Failed to update voucher: ' + error.message, 'error');
             }
         } catch (error) {
             console.error('Error updating voucher:', error);
-            alert('Error updating voucher: ' + error.message);
+            showToast('Error updating voucher: ' + error.message, 'error');
         }
     };
 
@@ -108,13 +112,14 @@ const Vouchers = () => {
 
             if (response.ok) {
                 await fetchVouchers();
+                showToast('Voucher deleted successfully', 'success');
             } else {
                 const error = await response.json();
-                alert('Failed to delete voucher: ' + error.message);
+                showToast('Failed to delete voucher: ' + error.message, 'error');
             }
         } catch (error) {
             console.error('Error deleting voucher:', error);
-            alert('Error deleting voucher: ' + error.message);
+            showToast('Error deleting voucher: ' + error.message, 'error');
         }
     };
 

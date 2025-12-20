@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import { ArrowLeft } from 'lucide-react';
 import API_URL from '../config/api';
 
@@ -8,7 +8,7 @@ import API_URL from '../config/api';
 const StaffAddAdvance = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
     const [staffName, setStaffName] = useState('');
     const [amount, setAmount] = useState('');
     const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -22,11 +22,11 @@ const StaffAddAdvance = () => {
                 setStaffName(data.staff?.name || data.name || '');
             } catch (err) {
                 console.error('Failed to load staff', err);
-                enqueueSnackbar('Failed to load staff details', { variant: 'error' });
+                showToast('Failed to load staff details', 'error');
             }
         };
         load();
-    }, [id, enqueueSnackbar]);
+    }, [id]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -43,15 +43,15 @@ const StaffAddAdvance = () => {
                 })
             });
             if (res.ok) {
-                enqueueSnackbar('Salary advance added successfully', { variant: 'success' });
+                showToast('Salary advance added successfully', 'success');
                 navigate('/staff');
             } else {
                 const data = await res.json();
-                enqueueSnackbar(data.message || 'Failed to add advance', { variant: 'error' });
+                showToast(data.message || 'Failed to add advance', 'error');
             }
         } catch (err) {
             console.error('Failed to save advance', err);
-            enqueueSnackbar('Failed to add salary advance', { variant: 'error' });
+            showToast('Failed to add salary advance', 'error');
         }
     };
 

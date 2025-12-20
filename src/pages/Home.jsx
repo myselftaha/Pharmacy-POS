@@ -1,6 +1,6 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import { Search, Ticket, Plus, ScanBarcode, UserRound, Zap, X } from 'lucide-react';
 import CategoryFilter from '../components/pos/CategoryFilter';
 
@@ -36,7 +36,7 @@ const Home = () => {
     const [medicines, setMedicines] = useState([]);
     const [supplies, setSupplies] = useState([]);
 
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
 
     const [paymentMethod, setPaymentMethod] = useState('Cash');
 
@@ -135,7 +135,7 @@ const Home = () => {
 
         // Check stock
         if (currentQty + quantityToAdd > product.stock) {
-            enqueueSnackbar(`Out of stock! Only ${product.stock} available.`, { variant: 'error' });
+            showToast(`Out of stock! Only ${product.stock} available.`, 'error');
             return;
         }
 
@@ -155,7 +155,7 @@ const Home = () => {
 
         const item = cartItems.find(i => i.id === id);
         if (item && newQuantity > item.stock) {
-            enqueueSnackbar(`Cannot exceed available stock (${item.stock})`, { variant: 'warning' });
+            showToast(`Cannot exceed available stock (${item.stock})`, 'warning');
             return;
         }
 
@@ -220,13 +220,13 @@ const Home = () => {
 
         if (matchedProduct) {
             // Found! Add to cart
-            enqueueSnackbar(`Scanned: ${matchedProduct.name}`, { variant: 'success', autoHideDuration: 1000 });
+            showToast(`Scanned: ${matchedProduct.name}`, 'success');
             addToCart(matchedProduct, matchedPackSize);
         } else {
             // Not found - Open Mapping Modal
             // Check if it's a valid looking barcode (length > 3) to avoid accidental triggers
             if (code.length > 2) {
-                enqueueSnackbar('Unknown barcode. Map it to a product.', { variant: 'info' });
+                showToast('Unknown barcode. Map it to a product.', 'info');
                 setLastScannedCode(code);
                 setIsMappingModalOpen(true);
             }
@@ -244,7 +244,7 @@ const Home = () => {
             const data = await response.json();
 
             if (response.ok) {
-                enqueueSnackbar('Barcode mapped successfully!', { variant: 'success' });
+                showToast('Barcode mapped successfully!', 'success');
                 setIsMappingModalOpen(false);
                 fetchMedicines(); // Refresh data
 
@@ -254,11 +254,11 @@ const Home = () => {
                     addToCart(data.medicine, mappingData.packSize);
                 }
             } else {
-                enqueueSnackbar(data.message || 'Failed to map barcode', { variant: 'error' });
+                showToast(data.message || 'Failed to map barcode', 'error');
             }
         } catch (error) {
             console.error('Map Error:', error);
-            enqueueSnackbar('Error mapping barcode', { variant: 'error' });
+            showToast('Error mapping barcode', 'error');
         }
     };
     // --- BARCODE LOGIC END ---
@@ -271,7 +271,7 @@ const Home = () => {
         // Validate that all items have valid quantities
         const invalidItems = cartItems.filter(item => !item.quantity || item.quantity === '' || item.quantity < 1 || isNaN(item.quantity));
         if (invalidItems.length > 0) {
-            enqueueSnackbar('Please enter valid quantities for all items', { variant: 'error' });
+            showToast('Please enter valid quantities for all items', 'error');
             console.error('Invalid quantities detected:', invalidItems);
             return;
         }
@@ -332,17 +332,17 @@ const Home = () => {
 
                 if (response.ok) {
                     console.log('✅ Transaction saved successfully to database!');
-                    enqueueSnackbar('Transaction saved successfully!', { variant: 'success' });
+                    showToast('Transaction saved successfully!', 'success');
                     // Refresh medicines to show updated stock
                     fetchMedicines();
                 } else {
                     console.warn('❌ Failed to save transaction:', responseData);
-                    enqueueSnackbar('Warning: Transaction may not have saved', { variant: 'warning' });
+                    showToast('Warning: Transaction may not have saved', 'warning');
                 }
             } catch (error) {
                 // Backend is not available, continue with print anyway
                 console.error('❌ Backend not available, printing without saving:', error);
-                enqueueSnackbar('Offline mode: Transaction not saved', { variant: 'warning' });
+                showToast('Offline mode: Transaction not saved', 'warning');
             }
 
             // Always proceed with printing
@@ -547,7 +547,7 @@ const Home = () => {
                     onRemove={removeFromCart}
                     onPrintBill={() => {
                         if (!selectedCustomer) {
-                            enqueueSnackbar('Please select customer', { variant: 'error' });
+                            showToast('Please select customer', 'error');
                             return;
                         }
                         const newTxId = `#TX${Date.now()}`;

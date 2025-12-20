@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import { ArrowLeft } from 'lucide-react';
 import API_URL from '../config/api';
 
@@ -22,7 +22,7 @@ const paymentMethods = ['Cash', 'Bank', 'EasyPaisa', 'JazzCash'];
 const StaffEdit = ({ staff: staffProp, onBack, onSave: onSaveProp, onAddAdvance: onAddAdvanceProp }) => {
     const { id: paramId } = useParams();
     const navigate = useNavigate();
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
 
     // Support both prop-based (component) and param-based (page) access
     const effectiveId = staffProp?._id || paramId;
@@ -100,14 +100,14 @@ const StaffEdit = ({ staff: staffProp, onBack, onSave: onSaveProp, onAddAdvance:
                 setPayments(await payRes.json());
             } catch (err) {
                 console.error('Failed to load staff profile', err);
-                enqueueSnackbar('Failed to load staff details', { variant: 'error' });
+                showToast('Failed to load staff details', 'error');
             } finally {
                 setLoading(false);
             }
         };
 
         loadExtraData();
-    }, [effectiveId, isNew, staffProp, enqueueSnackbar]);
+    }, [effectiveId, isNew, staffProp]);
 
     const handleChange = (field, value) => {
         setForm((prev) => ({ ...prev, [field]: value }));
@@ -136,12 +136,12 @@ const StaffEdit = ({ staff: staffProp, onBack, onSave: onSaveProp, onAddAdvance:
                     body: JSON.stringify(payload)
                 });
                 if (res.ok) {
-                    enqueueSnackbar('New staff member added successfully', { variant: 'success' });
+                    showToast('New staff member added successfully', 'success');
                     if (onSaveProp) onSaveProp();
                     else navigate('/staff');
                 } else {
                     const data = await res.json();
-                    enqueueSnackbar(data.message || 'Failed to add staff', { variant: 'error' });
+                    showToast(data.message || 'Failed to add staff', 'error');
                 }
             } else {
                 const [res, permRes] = await Promise.all([
@@ -157,16 +157,16 @@ const StaffEdit = ({ staff: staffProp, onBack, onSave: onSaveProp, onAddAdvance:
                     })
                 ]);
                 if (res.ok && permRes.ok) {
-                    enqueueSnackbar('Staff profile and permissions updated successfully', { variant: 'success' });
+                    showToast('Staff profile and permissions updated successfully', 'success');
                     if (onSaveProp) onSaveProp();
                     else navigate('/staff');
                 } else {
-                    enqueueSnackbar('Failed to update staff profile or permissions', { variant: 'error' });
+                    showToast('Failed to update staff profile or permissions', 'error');
                 }
             }
         } catch (err) {
             console.error('Failed to save staff', err);
-            enqueueSnackbar('An error occurred while saving staff details', { variant: 'error' });
+            showToast('An error occurred while saving staff details', 'error');
         }
     };
 

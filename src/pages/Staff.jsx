@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus } from 'lucide-react';
-import { useSnackbar } from 'notistack';
+import { useToast } from '../context/ToastContext';
 import StaffList from '../components/staff/StaffList';
 import StaffEdit from './StaffEdit';
 import DeleteConfirmationModal from '../components/common/DeleteConfirmationModal';
@@ -9,7 +9,7 @@ import API_URL from '../config/api';
 
 
 const Staff = () => {
-    const { enqueueSnackbar } = useSnackbar();
+    const { showToast } = useToast();
     const [staff, setStaff] = useState([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
@@ -32,7 +32,7 @@ const Staff = () => {
             setStaff(data);
         } catch (err) {
             console.error('Failed to load staff', err);
-            enqueueSnackbar('Failed to load staff members', { variant: 'error' });
+            showToast('Failed to load staff members', 'error');
         } finally {
             setLoading(false);
         }
@@ -66,7 +66,7 @@ const Staff = () => {
     const handleSave = async () => {
         await loadStaff();
         setIsEditOpen(false);
-        enqueueSnackbar('Staff details saved successfully', { variant: 'success' });
+        showToast('Staff details saved successfully', 'success');
     };
 
     const handleToggleStatus = async (row) => {
@@ -77,11 +77,11 @@ const Staff = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: nextStatus })
             });
-            enqueueSnackbar(`Staff ${nextStatus === 'Active' ? 'activated' : 'deactivated'} successfully`, { variant: 'success' });
+            showToast(`Staff ${nextStatus === 'Active' ? 'activated' : 'deactivated'} successfully`, 'success');
             await loadStaff();
         } catch (err) {
             console.error('Failed to update status', err);
-            enqueueSnackbar('Failed to update staff status', { variant: 'error' });
+            showToast('Failed to update staff status', 'error');
         }
     };
 
@@ -93,11 +93,11 @@ const Staff = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            enqueueSnackbar('Salary advance added successfully', { variant: 'success' });
+            showToast('Salary advance added successfully', 'success');
             await loadStaff();
         } catch (err) {
             console.error('Failed to add advance', err);
-            enqueueSnackbar('Failed to add salary advance', { variant: 'error' });
+            showToast('Failed to add salary advance', 'error');
         }
     };
 
@@ -113,17 +113,17 @@ const Staff = () => {
                 method: 'DELETE'
             });
             if (res.ok) {
-                enqueueSnackbar('Staff member and all history deleted successfully', { variant: 'success' });
+                showToast('Staff member and all history deleted successfully', 'success');
                 await loadStaff();
                 setIsDeleteModalOpen(false);
                 setStaffToDelete(null);
             } else {
                 const data = await res.json();
-                enqueueSnackbar(data.message || 'Failed to delete staff', { variant: 'error' });
+                showToast(data.message || 'Failed to delete staff', 'error');
             }
         } catch (err) {
             console.error('Failed to delete staff', err);
-            enqueueSnackbar('Failed to delete staff member', { variant: 'error' });
+            showToast('Failed to delete staff member', 'error');
         }
     };
 
@@ -196,5 +196,3 @@ const Staff = () => {
 };
 
 export default Staff;
-
-
