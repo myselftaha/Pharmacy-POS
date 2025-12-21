@@ -122,6 +122,9 @@ const medicineSchema = new mongoose.Schema({
     minStock: Number,
     supplier: String,
     note: String,
+    formulaCode: String, // Formula/Generic code for searching
+    genericName: String, // Alternative to formula code
+    shelfLocation: String, // Added for location tracking
     inInventory: { type: Boolean, default: false },
     status: { type: String, default: 'Active', enum: ['Active', 'Inactive'] },
     sku: { type: String, unique: true, sparse: true },
@@ -561,6 +564,8 @@ app.post('/api/supplies', async (req, res) => {
             unit,
             netContent,
             minStock,
+            formulaCode, // NEW: Formula/Generic code
+            invoiceDate, // NEW: Auto-set invoice date
             invoiceDueDate // Added
         } = req.body;
 
@@ -592,6 +597,10 @@ app.post('/api/supplies', async (req, res) => {
             if (price) medicine.price = price;
             if (category) medicine.category = category;
             if (description) medicine.description = description;
+            if (formulaCode) {
+                medicine.formulaCode = formulaCode;
+                medicine.genericName = formulaCode; // Update generic name as well
+            }
 
             medicine.inInventory = true; // Ensure it's active in inventory
             medicine.lastUpdated = new Date();
@@ -618,6 +627,8 @@ app.post('/api/supplies', async (req, res) => {
                 minStock: minStock || 10,
                 supplier: supplierName,
                 note: notes,
+                formulaCode: formulaCode || '', // Add formula code
+                genericName: formulaCode || '', // Use formula code as generic name fallback
                 inInventory: true
             });
             await medicine.save();

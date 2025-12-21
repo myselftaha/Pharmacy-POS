@@ -16,11 +16,12 @@ import Loader from '../components/common/Loader';
 const Home = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
-    const [activeCategory, setActiveCategory] = useState('All');    const [cartItems, setCartItems] = useState(() => {
+    const [activeCategory, setActiveCategory] = useState('All'); const [cartItems, setCartItems] = useState(() => {
         const saved = localStorage.getItem('cartItems');
         return saved ? JSON.parse(saved) : [];
     });
     const [searchQuery, setSearchQuery] = useState('');
+    const [formulaSearch, setFormulaSearch] = useState('');
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
     const [isAttachCustomerModalOpen, setIsAttachCustomerModalOpen] = useState(false);
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
@@ -77,7 +78,7 @@ const Home = () => {
         } finally {
             setLoading(false);
         }
-    };    useEffect(() => {
+    }; useEffect(() => {
         fetchMedicines();
         fetchSupplies();
     }, []);
@@ -114,6 +115,10 @@ const Home = () => {
     const filteredMedicines = medicines.filter(med => {
         const matchesCategory = activeCategory === 'All' || med.category === activeCategory;
         const matchesSearch = med.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesFormula = formulaSearch === '' ||
+            (med.formulaCode && med.formulaCode.toLowerCase().includes(formulaSearch.toLowerCase())) ||
+            (med.genericName && med.genericName.toLowerCase().includes(formulaSearch.toLowerCase())) ||
+            (med.id && med.id.toString().includes(formulaSearch));
         const inInventory = med.inInventory === true;
 
         // Check if this medicine has a corresponding Supply record
@@ -122,7 +127,7 @@ const Home = () => {
             (supply.medicineId && med._id && supply.medicineId.toString() === med._id.toString())
         );
 
-        return matchesCategory && matchesSearch && inInventory && hasSupplyRecord;
+        return matchesCategory && matchesSearch && matchesFormula && inInventory && hasSupplyRecord;
     });
 
 
@@ -145,7 +150,16 @@ const Home = () => {
                     (item._id || item.id) === productId ? { ...item, quantity: item.quantity + quantityToAdd } : item
                 );
             }
-            return [...prev, { ...product, id: productId, quantity: quantityToAdd }];
+            // Initialize new cart item with enhanced fields
+            return [...prev, {
+                ...product,
+                id: productId,
+                quantity: quantityToAdd,
+                saleType: 'Single',
+                discount: 0,
+                isUnit: false,
+                customPrice: null
+            }];
         });
     };
 
@@ -166,6 +180,30 @@ const Home = () => {
 
     const removeFromCart = (id) => {
         setCartItems(prev => prev.filter(item => item.id !== id));
+    };
+
+    const updateSaleType = (id, saleType) => {
+        setCartItems(prev => prev.map(item =>
+            item.id === id ? { ...item, saleType } : item
+        ));
+    };
+
+    const updateDiscount = (id, discount) => {
+        setCartItems(prev => prev.map(item =>
+            item.id === id ? { ...item, discount } : item
+        ));
+    };
+
+    const updateIsUnit = (id, isUnit) => {
+        setCartItems(prev => prev.map(item =>
+            item.id === id ? { ...item, isUnit } : item
+        ));
+    };
+
+    const updateCustomPrice = (id, customPrice) => {
+        setCartItems(prev => prev.map(item =>
+            item.id === id ? { ...item, customPrice } : item
+        ));
     };
 
     // --- BARCODE LOGIC START ---
@@ -293,13 +331,21 @@ const Home = () => {
                 } : {
                     name: 'Walk-in'
                 },
-                items: cartItems.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    price: parseFloat(item.price),
-                    quantity: parseInt(item.quantity) || 1,
-                    subtotal: parseFloat(item.price) * (parseInt(item.quantity) || 1)
-                })),
+                items: cartItems.map(item => {
+                    const effectivePrice = item.customPrice || parseFloat(item.price);
+                    const itemSubtotal = effectivePrice * (parseInt(item.quantity) || 1);
+                    const itemTotal = itemSubtotal - (parseFloat(item.discount) || 0);
+                    return {
+                        id: item.id,
+                        name: item.name,
+                        price: effectivePrice,
+                        quantity: parseInt(item.quantity) || 1,
+                        saleType: item.saleType || 'Single',
+                        discount: parseFloat(item.discount) || 0,
+                        isUnit: item.isUnit || false,
+                        subtotal: itemTotal
+                    };
+                }),
                 subtotal,
                 platformFee,
                 discount: discountAmount,
@@ -367,7 +413,14 @@ const Home = () => {
         }
     };
 
-    const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    // Calculate subtotal with custom prices and item-level discounts
+    const subtotal = cartItems.reduce((sum, item) => {
+        const effectivePrice = item.customPrice || item.price;
+        const itemSubtotal = effectivePrice * item.quantity;
+        const itemTotal = itemSubtotal - (item.discount || 0);
+        return sum + itemTotal;
+    }, 0);
+
     const platformFee = 0.10;
 
     let discountAmount = 0;
@@ -456,15 +509,27 @@ const Home = () => {
                     {/* Product Search Section */}
                     <div className="p-6 pb-2">
                         <h3 className="font-bold text-gray-800 mb-3">Product Search</h3>
-                        <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Select products by name or ID ......"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-12 pr-6 py-3 border-transparent rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 bg-gray-100 placeholder-gray-500"
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Enter Name"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-12 pr-6 py-3 border-transparent rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 bg-gray-100 placeholder-gray-500"
+                                />
+                            </div>
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Enter Formula/Code"
+                                    value={formulaSearch}
+                                    onChange={(e) => setFormulaSearch(e.target.value)}
+                                    className="pl-12 pr-6 py-3 border-transparent rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 bg-gray-100 placeholder-gray-500"
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -473,12 +538,10 @@ const Home = () => {
                         <table className="w-full">
                             <thead className="sticky top-0 bg-white border-b border-gray-200 z-10">
                                 <tr>
-                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">ID</th>
-                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Product</th>
-                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Category</th>
-                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Price</th>
+                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Name</th>
+                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Location</th>
+                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Sale Price</th>
                                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Stock</th>
-                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
@@ -493,37 +556,19 @@ const Home = () => {
                                             onClick={() => !isOutOfStock && addToCart(product)}
                                             className={`hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                         >
-                                            <td className="py-4 px-4 text-sm text-gray-900 font-bold">
-                                                TXN{String(product.id || '000').padStart(3, '0')}
-                                            </td>
                                             <td className="py-4 px-4 text-sm text-gray-700 font-medium">
                                                 {product.name}
                                             </td>
-                                            <td className="py-4 px-4">
-                                                <span className={`${themeColor} text-white text-xs font-medium px-3 py-1.5 rounded-md`}>
-                                                    {product.category}
-                                                </span>
+                                            <td className="py-4 px-4 text-sm text-gray-600">
+                                                {product.shelfLocation || 'N/A'}
                                             </td>
                                             <td className="py-4 px-4 text-sm text-gray-900 font-medium">
-                                                {product.price}/-
+                                                {product.price}
                                             </td>
-                                            <td className="py-4 px-4 text-sm text-gray-700 font-medium">
-                                                {product.stock}
-                                            </td>
-                                            <td className="py-4 px-4">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        !isOutOfStock && addToCart(product);
-                                                    }}
-                                                    disabled={isOutOfStock}
-                                                    className={`w-8 h-8 rounded-md flex items-center justify-center text-white transition-colors ${isOutOfStock
-                                                        ? 'bg-gray-300 cursor-not-allowed'
-                                                        : 'bg-[#00c950] hover:opacity-90'
-                                                        }`}
-                                                >
-                                                    <Plus size={16} />
-                                                </button>
+                                            <td className="py-4 px-4 text-sm font-medium">
+                                                <span className={isOutOfStock ? 'text-red-600' : 'text-gray-700'}>
+                                                    {product.stock}
+                                                </span>
                                             </td>
                                         </tr>
                                     );
@@ -544,6 +589,10 @@ const Home = () => {
                 <Cart
                     items={cartItems}
                     onUpdateQuantity={updateQuantity}
+                    onUpdateSaleType={updateSaleType}
+                    onUpdateDiscount={updateDiscount}
+                    onUpdateIsUnit={updateIsUnit}
+                    onUpdateCustomPrice={updateCustomPrice}
                     onRemove={removeFromCart}
                     onPrintBill={() => {
                         if (!selectedCustomer) {

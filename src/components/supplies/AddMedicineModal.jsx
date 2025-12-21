@@ -3,6 +3,16 @@ import { X, Save, ChevronDown } from 'lucide-react';
 
 const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier }) => {
     const [showUnitDropdown, setShowUnitDropdown] = useState(false);
+
+    // Get current date in YYYY-MM-DD format
+    const getCurrentDate = () => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const [formData, setFormData] = useState({
         name: '',
         category: 'Antibiotics',
@@ -11,15 +21,15 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
         stock: '', // Quantity
         unit: 'Piece',
         netContent: '',
+        formulaCode: '', // NEW: Formula/Generic code for search
         // New Fields
         batchNumber: '',
         supplierName: '',
         purchaseCost: '',
         purchaseInvoiceNumber: '',
-        invoiceDueDate: '', // Added
-        manufacturingDate: '',
+        invoiceDate: getCurrentDate(), // AUTO-SET: Current date
+        invoiceDueDate: '',
         expiryDate: '',
-        notes: '',
         status: 'Posted' // Default to Posted
     });
 
@@ -44,7 +54,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
             price: parseFloat(formData.price),
             purchaseCost: parseFloat(formData.purchaseCost)
         });
-        // Reset form
+        // Reset form with new current date
         setFormData({
             name: '',
             category: 'Antibiotics',
@@ -53,14 +63,14 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
             stock: '',
             unit: 'Piece',
             netContent: '',
+            formulaCode: '',
             batchNumber: '',
             supplierName: '',
             purchaseCost: '',
             purchaseInvoiceNumber: '',
+            invoiceDate: getCurrentDate(),
             invoiceDueDate: '',
-            manufacturingDate: '',
             expiryDate: '',
-            notes: '',
             status: 'Posted'
         });
     };
@@ -112,6 +122,19 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Formula/Generic Code
+                                </label>
+                                <input
+                                    type="text"
+                                    name="formulaCode"
+                                    value={formData.formulaCode}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                                    placeholder="e.g. AMX500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Category <span className="text-red-500">*</span>
                                 </label>
                                 <select
@@ -124,6 +147,8 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
                                     {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                 </select>
                             </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Unit <span className="text-red-500">*</span>
@@ -161,7 +186,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
                                     )}
                                 </div>
                             </div>
-                            <div className="md:col-span-3">
+                            <div className="md:col-span-1">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <textarea
                                     name="description"
@@ -385,27 +410,18 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Invoice Due Date
+                                    Invoice Date
                                 </label>
-                                <input
-                                    type="date"
-                                    name="invoiceDueDate"
-                                    value={formData.invoiceDueDate}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Mfg Date
-                                </label>
-                                <input
-                                    type="date"
-                                    name="manufacturingDate"
-                                    value={formData.manufacturingDate}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={formData.invoiceDate}
+                                        readOnly
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
+                                        title="Invoice date is automatically set to today's date"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">Auto</span>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -417,17 +433,6 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
                                     value={formData.expiryDate}
                                     onChange={handleChange}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                />
-                            </div>
-                            <div className="md:col-span-3">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                <input
-                                    type="text"
-                                    name="notes"
-                                    value={formData.notes}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="Any additional notes..."
                                 />
                             </div>
                         </div>

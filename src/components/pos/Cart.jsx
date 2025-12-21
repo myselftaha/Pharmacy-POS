@@ -1,82 +1,183 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, CreditCard, Banknote } from 'lucide-react';
+import { X } from 'lucide-react';
 
-const CartItem = ({ item, onUpdateQuantity, onRemove }) => {
+const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, onUpdateIsUnit, onUpdateCustomPrice, onRemove }) => {
     // Initialize with prop value converted to string, empty if 1
     const [localQuantity, setLocalQuantity] = useState(item.quantity > 1 ? item.quantity.toString() : '');
+    const [localDiscount, setLocalDiscount] = useState(item.discount || '0');
+    const [localPrice, setLocalPrice] = useState(item.customPrice || item.price);
 
-    // Sync local state when prop updates (e.g. from product list add button)
+    // Sync local state when prop updates
     useEffect(() => {
         setLocalQuantity(item.quantity > 1 ? item.quantity.toString() : '');
     }, [item.quantity]);
 
-    const handleChange = (e) => {
+    useEffect(() => {
+        setLocalDiscount(item.discount || '0');
+    }, [item.discount]);
+
+    useEffect(() => {
+        setLocalPrice(item.customPrice || item.price);
+    }, [item.customPrice, item.price]);
+
+    const handleQuantityChange = (e) => {
         const val = e.target.value;
-        // Allow empty string (while typing) or valid positive integers
         if (val === '' || /^\d+$/.test(val)) {
             setLocalQuantity(val);
         }
     };
 
-    const handleBlur = () => {
-        // When leaving the field, we commit the transaction.
-        // If empty or invalid, reset to 1 (which displays as empty)
+    const handleQuantityBlur = () => {
         const numVal = parseInt(localQuantity);
         if (!localQuantity || !numVal || numVal < 1) {
-            setLocalQuantity(''); // Reset display to empty (meaning 1)
+            setLocalQuantity('');
             onUpdateQuantity(item.id, 1);
         } else {
-            // Commit the valid number
             onUpdateQuantity(item.id, numVal);
         }
     };
 
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            e.target.blur(); // Trigger commit
+    const handleDiscountChange = (e) => {
+        const val = e.target.value;
+        if (val === '' || /^\d+\.?\d*$/.test(val)) {
+            setLocalDiscount(val);
         }
     };
 
+    const handleDiscountBlur = () => {
+        const numVal = parseFloat(localDiscount) || 0;
+        setLocalDiscount(numVal.toString());
+        onUpdateDiscount(item.id, numVal);
+    };
+
+    const handlePriceChange = (e) => {
+        const val = e.target.value;
+        if (val === '' || /^\d+\.?\d*$/.test(val)) {
+            setLocalPrice(val);
+        }
+    };
+
+    const handlePriceBlur = () => {
+        const numVal = parseFloat(localPrice) || item.price;
+        setLocalPrice(numVal);
+        onUpdateCustomPrice(item.id, numVal);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.target.blur();
+        }
+    };
+
+    const effectivePrice = item.customPrice || item.price;
+    const subtotal = effectivePrice * item.quantity;
+    const total = Math.max(0, subtotal - (item.discount || 0));
+
     return (
-        <div className="flex gap-3">
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center text-gray-400 font-bold">
-                {item.category?.charAt(0) || 'M'}
-            </div>
-            <div className="flex-1">
-                <h4 className="font-semibold text-gray-800 text-sm">{item.name}</h4>
-                <p className="text-xs text-gray-500">Price: Rs. {item.price.toFixed(2)}/{item.unit}</p>
-                <div className="flex items-center justify-between mt-1">
-                    <span className="font-bold text-green-600 text-sm">Rs. {(item.price * item.quantity).toFixed(2)}</span>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            placeholder="Qty"
-                            value={localQuantity}
-                            onFocus={(e) => e.target.select()}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            onKeyDown={handleKeyDown}
-                            className="w-14 h-8 text-center border-2 border-blue-300 rounded-lg px-2 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all select-all placeholder:text-gray-400"
-                        />
-                        <button
-                            onClick={() => onRemove(item.id)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition-all"
-                        >
-                            <Trash2 size={16} />
-                        </button>
-                    </div>
+        <tr className="border-b border-gray-100 hover:bg-gray-50">
+            <td className="py-3 px-3">
+                <div className="font-medium text-gray-800 text-sm">{item.name}</div>
+            </td>
+            <td className="py-3 px-2">
+                <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Qty"
+                    value={localQuantity}
+                    onFocus={(e) => e.target.select()}
+                    onChange={handleQuantityChange}
+                    onBlur={handleQuantityBlur}
+                    onKeyDown={handleKeyDown}
+                    className="w-16 h-8 text-center border-2 border-blue-300 rounded-lg px-1 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+            </td>
+            <td className="py-3 px-2">
+                <select
+                    value={item.saleType || 'Single'}
+                    onChange={(e) => onUpdateSaleType(item.id, e.target.value)}
+                    className="w-24 h-8 text-sm border border-gray-300 rounded-lg px-1 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
+                >
+                    <option value="Single">Single</option>
+                    <option value="Multiple">Multiple</option>
+                    <option value="Box">Box</option>
+                    <option value="Pack">Pack</option>
+                </select>
+            </td>
+            <td className="py-3 px-2">
+                <input
+                    type="text"
+                    inputMode="decimal"
+                    value={localPrice}
+                    onFocus={(e) => e.target.select()}
+                    onChange={handlePriceChange}
+                    onBlur={handlePriceBlur}
+                    onKeyDown={handleKeyDown}
+                    className="w-20 h-8 text-center border border-gray-300 rounded-lg px-1 text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+            </td>
+            <td className="py-3 px-2">
+                <input
+                    type="text"
+                    inputMode="decimal"
+                    value={localDiscount}
+                    onFocus={(e) => e.target.select()}
+                    onChange={handleDiscountChange}
+                    onBlur={handleDiscountBlur}
+                    onKeyDown={handleKeyDown}
+                    className="w-16 h-8 text-center border border-gray-300 rounded-lg px-1 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+            </td>
+            <td className="py-3 px-2 text-center">
+                <input
+                    type="checkbox"
+                    checked={item.isUnit || false}
+                    onChange={(e) => onUpdateIsUnit(item.id, e.target.checked)}
+                    className="w-4 h-4 accent-[#00c950] cursor-pointer"
+                />
+            </td>
+            <td className="py-3 px-3">
+                <div className="font-bold text-green-600 text-sm text-right">
+                    Rs. {total.toFixed(2)}
                 </div>
-            </div>
-        </div>
+            </td>
+            <td className="py-3 px-2 text-center">
+                <button
+                    onClick={() => onRemove(item.id)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition-all"
+                >
+                    <X size={16} />
+                </button>
+            </td>
+        </tr>
     );
 };
 
-const Cart = ({ items, onUpdateQuantity, onRemove, onPrintBill, onAttachCustomer, customer, discount = 0, paymentMethod, onPaymentMethodChange, voucher: selectedVoucher }) => {
+const Cart = ({
+    items,
+    onUpdateQuantity,
+    onUpdateSaleType,
+    onUpdateDiscount,
+    onUpdateIsUnit,
+    onUpdateCustomPrice,
+    onRemove,
+    onPrintBill,
+    onAttachCustomer,
+    customer,
+    discount = 0,
+    paymentMethod,
+    onPaymentMethodChange,
+    voucher: selectedVoucher
+}) => {
+    // Calculate subtotal using custom prices and item-level discounts
+    const subtotal = items.reduce((sum, item) => {
+        const effectivePrice = item.customPrice || item.price;
+        const itemSubtotal = effectivePrice * item.quantity;
+        const itemTotal = itemSubtotal - (item.discount || 0);
+        return sum + itemTotal;
+    }, 0);
 
-    const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const platformFee = 0.10; // Mock fee
+    const platformFee = 0.10;
     const total = Math.max(0, subtotal + platformFee - discount);
 
     return (
@@ -85,35 +186,51 @@ const Cart = ({ items, onUpdateQuantity, onRemove, onPrintBill, onAttachCustomer
                 <h2 className="font-bold text-lg text-gray-800">Current Sale</h2>
             </div>
 
-            <div className="p-4 text-sm text-gray-500">
+            <div className="p-4 pb-2 text-sm text-gray-500">
                 {items.length} items in cart
             </div>
 
-            <div
-                className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide"
-                style={{
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                    WebkitOverflowScrolling: 'touch'
-                }}
-            >
-                {items.map((item) => (
-                    <CartItem
-                        key={item.id}
-                        item={item}
-                        onUpdateQuantity={onUpdateQuantity}
-                        onRemove={onRemove}
-                    />
-                ))}
-                {items.length === 0 && (
+            {/* Cart Items Table */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide">
+                {items.length > 0 ? (
+                    <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-white border-b-2 border-gray-200 z-10">
+                            <tr className="text-xs text-gray-600">
+                                <th className="text-left py-2 px-3 font-semibold">Item</th>
+                                <th className="text-left py-2 px-2 font-semibold">Qty</th>
+                                <th className="text-left py-2 px-2 font-semibold">Type</th>
+                                <th className="text-left py-2 px-2 font-semibold">Price</th>
+                                <th className="text-left py-2 px-2 font-semibold">Disc</th>
+                                <th className="text-center py-2 px-2 font-semibold">Unit?</th>
+                                <th className="text-right py-2 px-3 font-semibold">Total</th>
+                                <th className="text-center py-2 px-2 font-semibold"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items.map((item) => (
+                                <CartItem
+                                    key={item.id}
+                                    item={item}
+                                    onUpdateQuantity={onUpdateQuantity}
+                                    onUpdateSaleType={onUpdateSaleType}
+                                    onUpdateDiscount={onUpdateDiscount}
+                                    onUpdateIsUnit={onUpdateIsUnit}
+                                    onUpdateCustomPrice={onUpdateCustomPrice}
+                                    onRemove={onRemove}
+                                />
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
                     <div className="text-center text-gray-400 py-8">
                         Cart is empty
                     </div>
                 )}
             </div>
 
+            {/* Summary Section */}
             <div className="p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
-                <h3 className="font-bold text-gray-800 mb-4">Summary</h3>
+                <h3 className="font-bold text-gray-800 mb-3">Summary</h3>
                 <div className="space-y-2 mb-4 text-sm">
                     <div className="flex justify-between text-gray-600">
                         <span>Subtotal</span>
@@ -138,36 +255,12 @@ const Cart = ({ items, onUpdateQuantity, onRemove, onPrintBill, onAttachCustomer
                     </div>
                 </div>
 
-                {/* Payment Method Selector */}
-                <div className="flex gap-3 mb-4">
-                    <button
-                        onClick={() => onPaymentMethodChange('Cash')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border transition-all ${paymentMethod === 'Cash'
-                            ? 'bg-[#00c950] border-[#00c950] text-white shadow-md'
-                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
-                        <Banknote size={18} />
-                        <span className="font-semibold text-sm">Cash</span>
-                    </button>
-                    <button
-                        onClick={() => onPaymentMethodChange('Card')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border transition-all ${paymentMethod === 'Card'
-                            ? 'bg-[#00c950] border-[#00c950] text-white shadow-md'
-                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
-                        <CreditCard size={18} />
-                        <span className="font-semibold text-sm">Card</span>
-                    </button>
-                </div>
-
                 <button
                     onClick={onPrintBill}
                     disabled={items.length === 0}
-                    className="w-full bg-green-500 text-white py-3 rounded-lg font-bold hover:bg-green-600 transition-colors shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-[#00c950] text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Print Bill
+                    Pay
                 </button>
             </div>
         </div>
