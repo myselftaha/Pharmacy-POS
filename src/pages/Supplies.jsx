@@ -515,6 +515,7 @@ const Supplies = () => {
                 onClose={() => setIsEditModalOpen(false)}
                 onSave={handleUpdateSupply}
                 supply={selectedSupply}
+                suppliers={suppliers}
             />
 
             <DeleteConfirmationModal

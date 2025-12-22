@@ -18,9 +18,10 @@ const MedicineTable = ({ medicines, onEdit, onDelete }) => {
                             <th className="px-4 py-4">Image</th>
                             <th className="px-4 py-4">Name</th>
                             <th className="px-4 py-4">Description</th>
-                            <th className="px-4 py-4">Net Content</th>
+                            <th className="px-4 py-4">Items per Pack</th>
                             <th className="px-4 py-4">Unit</th>
-                            <th className="px-4 py-4">Price</th>
+                            <th className="px-4 py-4">Pack Price</th>
+                            <th className="px-4 py-4">Unit Price</th>
                             <th className="px-4 py-4">Expiry Date</th>
                             <th className="px-4 py-4">Stock</th>
                             <th className="px-4 py-4 text-right">Actions</th>
@@ -38,9 +39,10 @@ const MedicineTable = ({ medicines, onEdit, onDelete }) => {
                                 <td className="px-4 py-4 text-sm text-gray-500 max-w-xs truncate" title={med.description}>
                                     {med.description}
                                 </td>
-                                <td className="px-4 py-4 text-sm text-gray-500">{med.netContent}</td>
+                                <td className="px-4 py-4 text-sm text-gray-500">{med.packSize || 1}</td>
                                 <td className="px-4 py-4 text-sm text-gray-500">{med.unit}</td>
                                 <td className="px-4 py-4 font-bold text-gray-900">Rs. {med.price.toFixed(2)}</td>
+                                <td className="px-4 py-4 text-sm text-green-600 font-medium">Rs. {(med.price / (med.packSize || 1)).toFixed(2)}</td>
                                 <td className={`px-4 py-4 text-sm font-medium ${med.expiryDate && new Date(med.expiryDate) <= new Date(new Date().setMonth(new Date().getMonth() + 3))
                                     ? 'text-red-500'
                                     : 'text-gray-900'

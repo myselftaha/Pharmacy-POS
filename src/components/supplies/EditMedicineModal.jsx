@@ -9,7 +9,7 @@ const EditMedicineModal = ({ isOpen, onClose, medicine, onSave }) => {
         price: '',
         stock: '',
         unit: 'Box',
-        netContent: ''
+        packSize: ''
     });
 
     useEffect(() => {
@@ -21,7 +21,7 @@ const EditMedicineModal = ({ isOpen, onClose, medicine, onSave }) => {
                 price: medicine.price || '',
                 stock: medicine.stock || '',
                 unit: medicine.unit || 'Box',
-                netContent: medicine.netContent || '',
+                packSize: medicine.packSize || 1,
                 expiryDate: medicine.expiryDate || ''
             });
         }
@@ -156,15 +156,16 @@ const EditMedicineModal = ({ isOpen, onClose, medicine, onSave }) => {
                             />
                         </div>
 
-                        {/* Net Content */}
+                        {/* Items per Pack */}
                         <div className="col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Net Content</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Items per Pack</label>
                             <input
-                                type="text"
-                                name="netContent"
-                                value={formData.netContent}
+                                type="number"
+                                name="packSize"
+                                value={formData.packSize}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                                placeholder="e.g. 30"
                             />
                         </div>
 

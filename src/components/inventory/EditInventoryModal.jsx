@@ -8,6 +8,7 @@ const EditInventoryModal = ({ isOpen, onClose, onConfirm, product }) => {
         margin: '',
         stock: '',
         minStock: '',
+        packSize: '',
         expiryDate: ''
     });
 
@@ -19,8 +20,9 @@ const EditInventoryModal = ({ isOpen, onClose, onConfirm, product }) => {
                 price: price,
                 costPrice: cost,
                 margin: calculateMargin(price, cost),
-                stock: product.stock || '',
+                stock: (product.stock / (product.packSize || 1)).toFixed(1) || '',
                 minStock: product.minStock || 10,
+                packSize: product.packSize || 1,
                 expiryDate: product.expiryDate ? new Date(product.expiryDate).toISOString().split('T')[0] : ''
             });
         }
@@ -148,6 +150,18 @@ const EditInventoryModal = ({ isOpen, onClose, onConfirm, product }) => {
                                 value={formData.minStock}
                                 onChange={e => setFormData({ ...formData, minStock: e.target.value })}
                                 className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+                            />
+                        </div>
+
+                        {/* Items per Pack */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Items per Pack</label>
+                            <input
+                                type="number"
+                                value={formData.packSize}
+                                onChange={e => setFormData({ ...formData, packSize: e.target.value })}
+                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+                                required
                             />
                         </div>
 

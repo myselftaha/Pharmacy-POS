@@ -48,6 +48,9 @@ const BillModal = ({ isOpen, onClose, items, total, onPrint, customer, discount 
                             <div key={item.id} className="flex justify-between text-sm">
                                 <div>
                                     <span className="font-medium text-gray-800">{item.name}</span>
+                                    {item.mrp > 0 && (
+                                        <div className="text-[10px] text-gray-400 line-through">MRP: Rs. {item.mrp.toFixed(2)}</div>
+                                    )}
                                     <div className="text-xs text-gray-500">
                                         {item.quantity} x Rs. {item.price.toFixed(2)}
                                     </div>

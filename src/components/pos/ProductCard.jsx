@@ -16,15 +16,21 @@ const ProductCard = ({ product, onAdd }) => {
                 <h3 className="font-bold text-gray-900 mb-1">{product.name}</h3>
                 <p className="text-xs text-gray-500 mb-2 line-clamp-2">{product.description}</p>
 
-                <div className={`flex items-center gap-2 text-xs mb-3 ${isOutOfStock ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
-                    <span>Netto: {product.netContent}</span>
-                    <span>|</span>
-                    <span>Stock: {product.stock} Available</span>
+                <div className={`flex flex-col gap-1 text-xs mb-3 ${isOutOfStock ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
+                    <div className="flex justify-between">
+                        <span>Pack: {product.packSize || 1} Items</span>
+                        <span>Stock: {product.stock} Units</span>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-50">
-                <span className={`font-bold ${isOutOfStock ? 'text-red-500' : 'text-green-600'}`}>Rs. {product.price.toFixed(2)}/{product.unit}</span>
+            <div className="flex flex-col mt-auto pt-3 border-t border-gray-50">
+                <span className={`font-bold ${isOutOfStock ? 'text-red-500' : 'text-green-600'}`}>Rs. {product.price.toFixed(2)} [Pack]</span>
+                <span className="text-[10px] text-gray-400 font-medium">
+                    Rs. {(product.price / (product.packSize || 1)).toFixed(2)} [Unit]
+                </span>
+            </div>
+            <div className="flex items-center justify-end mt-2">
                 <button
                     onClick={() => !isOutOfStock && onAdd(product)}
                     disabled={isOutOfStock}

@@ -155,7 +155,6 @@ const Inventory = () => {
 
         try {
             await handleUpdateInventory(medicine._id || medicine.id, {
-                ...medicine,
                 price: parseFloat(editingPrice.value)
             });
             setEditingPrice({ id: null, value: '' });
@@ -212,11 +211,13 @@ const Inventory = () => {
             'SKU': item.sku || 'N/A',
             'Category': item.category,
             'Unit': item.unit || '',
-            'Stock': item.stock,
-            'Min Stock': item.minStock || 10,
-            'Cost Price': item.costPrice || 0,
-            'Selling Price': item.price,
-            'Stock Value': (item.stock * (item.costPrice || 0)).toFixed(2),
+            'Stock (Packs)': (item.stock / (item.packSize || 1)).toFixed(2),
+            'Min Stock (Packs)': item.minStock || 10,
+            'Cost Price (Pack)': item.costPrice || 0,
+            'Pack Price (Sale)': item.price,
+            'Items per Pack': item.packSize || 1,
+            'Unit Price': (item.price / (item.packSize || 1)).toFixed(2),
+            'Total Stock Value': ((item.stock / (item.packSize || 1)) * (item.costPrice || 0)).toFixed(2),
             'Status': item.status || 'Active',
             'Expiry Date': item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : 'N/A',
             'Last Updated': item.lastUpdated ? new Date(item.lastUpdated).toLocaleString() : 'N/A'
@@ -294,9 +295,10 @@ const Inventory = () => {
     });
 
     const allLowStockItems = inventoryItems.filter(med => {
-        const stock = parseInt(med.stock || 0);
-        const minStock = parseInt(med.minStock || 10);
-        return stock <= minStock;
+        const packSize = med.packSize || 1;
+        const stockInPacks = (med.stock || 0) / packSize;
+        const minStockInPacks = med.minStock || 10;
+        return stockInPacks <= minStockInPacks;
     });
 
     const inventoryItemsFiltered = getFilteredMedicines(inventoryItems);
@@ -319,8 +321,11 @@ const Inventory = () => {
 
             // Handle special cases
             if (key === 'stockValue') {
-                valA = (a.stock || 0) * (a.costPrice || 0);
-                valB = (b.stock || 0) * (b.costPrice || 0);
+                valA = ((a.stock || 0) / (a.packSize || 1)) * (a.costPrice || 0);
+                valB = ((b.stock || 0) / (b.packSize || 1)) * (b.costPrice || 0);
+            } else if (key === 'stock') {
+                valA = (a.stock || 0) / (a.packSize || 1);
+                valB = (b.stock || 0) / (b.packSize || 1);
             } else if (key === 'lastUpdated') {
                 valA = new Date(a.lastUpdated || 0).getTime();
                 valB = new Date(b.lastUpdated || 0).getTime();
@@ -470,15 +475,16 @@ const Inventory = () => {
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
                                         <div className="flex items-center gap-1">Product {sortConfig.key === 'name' && <ArrowUpDown size={14} />}</div>
                                     </th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Items/Pack</th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Unit</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stock')}>
-                                        <div className="flex items-center gap-1">Stock {sortConfig.key === 'stock' && <ArrowUpDown size={14} />}</div>
+                                        <div className="flex items-center gap-1">Packs Stock {sortConfig.key === 'stock' && <ArrowUpDown size={14} />}</div>
                                     </th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Stock Value</th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('price')}>
-                                        <div className="flex items-center gap-1">Price {sortConfig.key === 'price' && <ArrowUpDown size={14} />}</div>
+                                        <div className="flex items-center gap-1">Pack Price {sortConfig.key === 'price' && <ArrowUpDown size={14} />}</div>
                                     </th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Unit Price</th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('lastUpdated')}>
                                         <div className="flex items-center gap-1">Updated {sortConfig.key === 'lastUpdated' && <ArrowUpDown size={14} />}</div>
@@ -500,26 +506,22 @@ const Inventory = () => {
                                                 {item.sku && <div className="text-xs text-gray-500 font-mono">SKU: {item.sku}</div>}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="text-sm text-gray-600">{item.unit || '-'}</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
-                                                    {item.category}
-                                                </span>
+                                                <div className="text-sm font-bold text-blue-600">{item.packSize || 1}</div>
+                                                <span className="text-[10px] text-gray-400 block">{item.unit || '-'}</span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.stock <= 0
                                                     ? 'bg-red-600 text-white'
-                                                    : item.stock <= (item.minStock || 10)
+                                                    : (item.stock / (item.packSize || 1)) <= (item.minStock || 10)
                                                         ? 'bg-orange-100 text-orange-800'
                                                         : 'bg-green-100 text-green-800'
                                                     }`}>
-                                                    {item.stock <= 0 ? 'Out of Stock' : item.stock}
+                                                    {item.stock <= 0 ? 'Out of Stock' : `${(item.stock / (item.packSize || 1)).toFixed(1)} Packs`}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className="text-sm font-medium text-gray-600">
-                                                    {((item.stock || 0) * (item.costPrice || 0)).toLocaleString()}/-
+                                                    {(((item.stock || 0) / (item.packSize || 1)) * (item.costPrice || 0)).toLocaleString()}/-
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm font-medium text-gray-800">
@@ -544,6 +546,9 @@ const Inventory = () => {
                                                         <Edit size={10} className="opacity-0 group-hover/price:opacity-100 text-gray-400" />
                                                     </div>
                                                 )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-sm font-bold text-green-600">{(item.price / (item.packSize || 1)).toFixed(2)}/-</span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-bold border ${item.status === 'Inactive'
@@ -615,7 +620,7 @@ const Inventory = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className="font-medium text-gray-700">{item.stock} units</span>
+                                                    <span className="font-medium text-gray-700">{(item.stock / (item.packSize || 1)).toFixed(1)} Packs</span>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="font-medium text-gray-800">
@@ -677,10 +682,10 @@ const Inventory = () => {
                                                 <td className="px-6 py-4">
                                                     <div className="space-y-1">
                                                         <div className={`font-bold text-lg ${item.stock <= 0 ? 'text-red-600' :
-                                                            item.stock <= (item.minStock || 10) ? 'text-red-500' :
+                                                            (item.stock / (item.packSize || 1)) <= (item.minStock || 10) ? 'text-red-500' :
                                                                 'text-orange-600'
                                                             }`}>
-                                                            {item.stock} {item.unit || 'units'}
+                                                            {(item.stock / (item.packSize || 1)).toFixed(1)} {item.unit || 'Packs'}
                                                         </div>
                                                         <div className="flex items-center gap-2 text-xs text-gray-600">
                                                             <span>Min: {item.minStock || 10}</span>

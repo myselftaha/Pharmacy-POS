@@ -46,16 +46,19 @@ const QuantityModal = ({ isOpen, onClose, product, onConfirm }) => {
                     <div className="mb-6">
                         <h3 className="font-bold text-gray-900 text-lg mb-1">{product.name}</h3>
                         <p className="text-sm text-gray-500">{product.description}</p>
-                        <div className="mt-2 flex items-center gap-4">
-                            <span className="text-sm text-gray-600">Price: <span className="font-bold text-green-600">Rs. {product.price.toFixed(2)}</span></span>
-                            <span className="text-sm text-gray-600">Available: <span className="font-bold">{product.stock} {product.unit}</span></span>
+                        <div className="mt-2 flex flex-col gap-1">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Pack Price: <span className="font-bold text-green-600">Rs. {product.price.toFixed(2)}</span></span>
+                                <span className="text-gray-600">Unit Price: <span className="font-bold text-blue-600">Rs. {(product.price / (product.packSize || 1)).toFixed(2)}</span></span>
+                            </div>
+                            <span className="text-sm text-gray-600 font-medium">Available: {product.stock} Units</span>
                         </div>
                     </div>
 
                     {/* Quantity Selector */}
                     <div className="mb-6">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Quantity <span className="text-gray-500">({product.unit})</span>
+                            Quantity <span className="text-gray-500">(Single Units)</span>
                         </label>
                         <div className="flex items-center gap-4">
                             <button
@@ -88,8 +91,8 @@ const QuantityModal = ({ isOpen, onClose, product, onConfirm }) => {
                                 <Plus size={20} className="text-gray-700" />
                             </button>
                         </div>
-                        {product.netContent && (
-                            <p className="text-xs text-gray-500 mt-2">Net Content: {product.netContent}</p>
+                        {product.packSize > 0 && (
+                            <p className="text-xs text-gray-500 mt-2">Items per Pack: {product.packSize}</p>
                         )}
                     </div>
 
@@ -98,11 +101,11 @@ const QuantityModal = ({ isOpen, onClose, product, onConfirm }) => {
                         <div className="flex justify-between items-center">
                             <span className="text-gray-700 font-medium">Total Price:</span>
                             <span className="text-2xl font-bold text-green-600">
-                                Rs. {(product.price * quantity).toFixed(2)}
+                                Rs. {((product.price / (product.packSize || 1)) * quantity).toFixed(2)}
                             </span>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                            {quantity} × Rs. {product.price.toFixed(2)}
+                            {quantity} × Rs. {(product.price / (product.packSize || 1)).toFixed(2)} per Unit
                         </p>
                     </div>
 

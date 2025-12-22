@@ -18,40 +18,95 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
         category: 'Antibiotics',
         description: '',
         price: '', // Selling Price
-        stock: '', // Quantity
-        unit: 'Piece',
-        netContent: '',
-        formulaCode: '', // NEW: Formula/Generic code for search
-        // New Fields
+        stock: '', // No. of Strips/Qty
+        unit: 'Strip',
+        netContent: '10', // Units / Strip
+        formulaCode: '',
         batchNumber: '',
         supplierName: '',
-        purchaseCost: '',
-        purchaseInvoiceNumber: '',
-        invoiceDate: getCurrentDate(), // AUTO-SET: Current date
-        invoiceDueDate: '',
+        purchaseCost: '', // Cost Price (per strip)
+        mrp: '',
         expiryDate: '',
-        status: 'Posted' // Default to Posted
+        freeQuantity: '0',
+        sellPrice: '',
+        discountPercentage: '0',
+        boxNumber: '',
+        itemAmount: '0.00',
+        discountAmount: '0.00',
+        taxableAmount: '0.00',
+        cgstPercentage: '0',
+        cgstAmount: '0.00',
+        sgstPercentage: '0',
+        sgstAmount: '0.00',
+        igstPercentage: '0',
+        igstAmount: '0.00',
+        totalGst: '0.00',
+        payableAmount: '0.00',
+        invoiceDate: getCurrentDate(),
+        invoiceDueDate: '',
+        status: 'Posted'
     });
 
     useEffect(() => {
         if (isOpen && initialSupplier) {
-            setFormData(prev => ({ ...prev, supplierName: initialSupplier }));
+            const name = typeof initialSupplier === 'object' ? initialSupplier.name : initialSupplier;
+            setFormData(prev => ({ ...prev, supplierName: name || '' }));
         }
     }, [isOpen, initialSupplier]);
 
     if (!isOpen) return null;
 
+    const calculateTotals = (data) => {
+        const qty = parseFloat(data.stock) || 0;
+        const cost = parseFloat(data.purchaseCost) || 0;
+        const discPerc = parseFloat(data.discountPercentage) || 0;
+        const cgstPerc = parseFloat(data.cgstPercentage) || 0;
+        const sgstPerc = parseFloat(data.sgstPercentage) || 0;
+        const igstPerc = parseFloat(data.igstPercentage) || 0;
+
+        const itemAmount = qty * cost;
+        const discountAmount = itemAmount * (discPerc / 100);
+        const taxableAmount = itemAmount - discountAmount;
+
+        const cgstAmount = taxableAmount * (cgstPerc / 100);
+        const sgstAmount = taxableAmount * (sgstPerc / 100);
+        const igstAmount = taxableAmount * (igstPerc / 100);
+        const totalGst = cgstAmount + sgstAmount + igstAmount;
+        const payableAmount = taxableAmount + totalGst;
+
+        return {
+            ...data,
+            itemAmount: itemAmount.toFixed(2),
+            discountAmount: discountAmount.toFixed(2),
+            taxableAmount: taxableAmount.toFixed(2),
+            cgstAmount: cgstAmount.toFixed(2),
+            sgstAmount: sgstAmount.toFixed(2),
+            igstAmount: igstAmount.toFixed(2),
+            totalGst: totalGst.toFixed(2),
+            payableAmount: payableAmount.toFixed(2)
+        };
+    };
+
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => {
+            const newData = { ...prev, [name]: value };
+            // Auto-calculate totals if relevant fields change
+            const calculationFields = ['stock', 'purchaseCost', 'discountPercentage', 'cgstPercentage', 'sgstPercentage', 'igstPercentage'];
+            if (calculationFields.includes(name)) {
+                return calculateTotals(newData);
+            }
+            return newData;
+        });
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
         onSave({
             ...formData,
-            quantity: parseInt(formData.stock), // Map stock to quantity for API
-            price: parseFloat(formData.price),
+            quantity: parseInt(formData.stock),
+            price: parseFloat(formData.sellPrice || formData.price),
+            sellingPrice: parseFloat(formData.sellPrice || formData.price),
             purchaseCost: parseFloat(formData.purchaseCost)
         });
         // Reset form with new current date
@@ -92,368 +147,311 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, suppliers, initialSupplier 
     ];
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                <div className="bg-green-600 p-4 flex justify-between items-center text-white sticky top-0 z-10">
-                    <h2 className="font-bold text-lg">Add New Supply (Purchase Record)</h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-y-auto">
+                <div className="bg-green-600 p-5 flex justify-between items-center text-white sticky top-0 z-10">
+                    <h2 className="font-black text-xl">Add New Supply (Purchase Record)</h2>
                     <button onClick={onClose} className="hover:bg-green-700 p-1 rounded-full transition-colors">
                         <X size={20} />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    {/* Section 1: Product Basics */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Product Details</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="md:col-span-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Medicine Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    required
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="e.g. Amoxicillin"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Formula/Generic Code
-                                </label>
-                                <input
-                                    type="text"
-                                    name="formulaCode"
-                                    value={formData.formulaCode}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="e.g. AMX500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Category <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    name="category"
-                                    required
-                                    value={formData.category}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                >
-                                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                </select>
-                            </div>
+                    {/* Supplier and Invoice Info */}
+                    <div className="grid grid-cols-4 gap-6 mb-8 pb-6 border-b border-gray-100">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Supplier Name <span className="text-red-500">*</span></label>
+                            <input
+                                list="suppliers-list"
+                                name="supplierName"
+                                required
+                                value={formData.supplierName}
+                                onChange={handleChange}
+                                placeholder="Select or Type Supplier"
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                            <datalist id="suppliers-list">
+                                {suppliers.map((s, idx) => (
+                                    <option key={idx} value={s.name} />
+                                ))}
+                            </datalist>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Unit <span className="text-red-500">*</span>
-                                </label>
-                                <div className="relative">
-                                    <div
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white cursor-pointer flex justify-between items-center"
-                                        onClick={() => setShowUnitDropdown(!showUnitDropdown)}
-                                    >
-                                        <span className={`truncate ${!formData.unit ? 'text-gray-400' : 'text-gray-900'}`}>{formData.unit || 'Select Unit'}</span>
-                                        <ChevronDown size={16} className="text-gray-500" />
-                                    </div>
-
-                                    {showUnitDropdown && (
-                                        <>
-                                            <div
-                                                className="fixed inset-0 z-40"
-                                                onClick={() => setShowUnitDropdown(false)}
-                                            ></div>
-                                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
-                                                {units.map(unit => (
-                                                    <div
-                                                        key={unit}
-                                                        className="px-4 py-2 hover:bg-green-50 hover:text-green-700 cursor-pointer text-sm text-gray-700 border-b border-gray-50 last:border-none transition-colors"
-                                                        onClick={() => {
-                                                            handleChange({ target: { name: 'unit', value: unit } });
-                                                            setShowUnitDropdown(false);
-                                                        }}
-                                                    >
-                                                        {unit}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="md:col-span-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={handleChange}
-                                    rows="1"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="Brief description..."
-                                />
-                            </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Invoice Number</label>
+                            <input
+                                type="text"
+                                name="purchaseInvoiceNumber"
+                                value={formData.purchaseInvoiceNumber}
+                                onChange={handleChange}
+                                placeholder="INV-001"
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Invoice Date</label>
+                            <input
+                                type="date"
+                                name="invoiceDate"
+                                value={formData.invoiceDate}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Due Date</label>
+                            <input
+                                type="date"
+                                name="invoiceDueDate"
+                                value={formData.invoiceDueDate}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
                         </div>
                     </div>
 
-                    {/* Section 2: Purchase & Stock Details */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Purchase & Stock</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Quantity <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    name="stock"
-                                    required
-                                    min="1"
-                                    value={formData.stock}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="Qty Purchased"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Cost Price (Per Unit) <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    name="purchaseCost"
-                                    required
-                                    min="0"
-                                    step="0.01"
-                                    value={formData.purchaseCost}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="0.00"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Selling Price <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    name="price"
-                                    required
-                                    min="0"
-                                    step="0.01"
-                                    value={formData.price}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="0.00"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Net Content</label>
-                                <input
-                                    type="text"
-                                    name="netContent"
-                                    value={formData.netContent}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="e.g. 10 tabs"
-                                />
-                            </div>
+                    {/* Header Info (Search, Batch, Expiry, etc) */}
+                    <div className="grid grid-cols-7 gap-5 mb-6">
+                        <div className="col-span-2">
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Product Name</label>
+                            <input
+                                type="text"
+                                name="name"
+                                required
+                                value={formData.name}
+                                onChange={handleChange}
+                                placeholder="Search"
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Batch Number <span className="text-red-500">*</span></label>
+                            <input
+                                type="text"
+                                name="batchNumber"
+                                required
+                                value={formData.batchNumber}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Expiry Date <span className="text-red-500">*</span></label>
+                            <input
+                                type="date"
+                                name="expiryDate"
+                                required
+                                value={formData.expiryDate}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">No.of Strips/Qty <span className="text-red-500">*</span></label>
+                            <input
+                                type="number"
+                                name="stock"
+                                required
+                                value={formData.stock}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1.5 text-[15px] border-b-2 border-blue-200 focus:border-blue-500 outline-none font-bold text-blue-600 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Free Strips / Qty</label>
+                            <input
+                                type="number"
+                                name="freeQuantity"
+                                value={formData.freeQuantity}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">MRP <span className="text-red-500">*</span></label>
+                            <input
+                                type="number"
+                                name="mrp"
+                                required
+                                value={formData.mrp}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1.5 text-[15px] border-b-2 border-green-200 focus:border-green-500 outline-none font-bold text-green-600 transition-all"
+                            />
                         </div>
                     </div>
 
-                    {/* Section 2.5: Payment Preference */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Payment Options</h3>
-                        <div className="flex flex-col gap-3">
-                            {/* Supplier Credit Option */}
-                            {formData.supplierName && (() => {
-                                const selectedSupplier = suppliers?.find(s => s.name === formData.supplierName);
-                                const credit = selectedSupplier?.creditBalance || 0;
-                                const totalCost = (parseFloat(formData.stock) || 0) * (parseFloat(formData.purchaseCost) || 0);
-
-                                return (
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            id="useCredit"
-                                            name="useCredit"
-                                            disabled={credit <= 0}
-                                            checked={formData.useCredit || false}
-                                            onChange={(e) => {
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    useCredit: e.target.checked,
-                                                    // If using credit, disable manual paid amount? Or allow mix? 
-                                                    // Let's mutually exclude 'Record Payment' if full credit used?
-                                                    // For simplicity: If Use Credit is checked, it tries to pay FULL.
-                                                    paidAmount: e.target.checked ? '' : prev.paidAmount
-                                                }));
-                                            }}
-                                            className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
-                                        />
-                                        <label htmlFor="useCredit" className={`text-sm font-medium ${credit <= 0 ? 'text-gray-400' : 'text-gray-700'}`}>
-                                            Use Supplier Credit (Available: <span className="font-bold">Rs. {credit.toLocaleString()}</span>)
-                                        </label>
-                                        {formData.useCredit && (credit < totalCost) && (
-                                            <span className="text-xs text-red-500 font-bold ml-2">Warning: Insufficient credit for full payment.</span>
-                                        )}
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Manual Payment Option */}
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="recordPayment"
-                                    disabled={formData.useCredit} // Disable if using credit (simplify UX)
-                                    checked={!!formData.paidAmount && !formData.useCredit}
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            const total = (parseFloat(formData.stock) || 0) * (parseFloat(formData.purchaseCost) || 0);
-                                            setFormData(prev => ({ ...prev, paidAmount: total }));
-                                        } else {
-                                            setFormData(prev => ({ ...prev, paidAmount: '' }));
-                                        }
-                                    }}
-                                    className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
-                                />
-                                <label htmlFor="recordPayment" className="text-sm font-medium text-gray-700">
-                                    Record Cash/Bank Payment Now
-                                </label>
-                            </div>
-
-                            {/* Paid Amount Input */}
-                            {(!!formData.paidAmount && !formData.useCredit) && (
-                                <div className="ml-6">
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Amount Paid</label>
-                                    <input
-                                        type="number"
-                                        name="paidAmount"
-                                        value={formData.paidAmount}
-                                        onChange={handleChange}
-                                        className="w-48 px-3 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                            )}
+                    <div className="grid grid-cols-7 gap-5 mb-6">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Cost Price <span className="text-red-500">*</span></label>
+                            <input
+                                type="number"
+                                name="purchaseCost"
+                                required
+                                value={formData.purchaseCost}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1.5 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none font-bold transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Sell Price <span className="text-red-500">*</span></label>
+                            <input
+                                type="number"
+                                name="sellPrice"
+                                required
+                                value={formData.sellPrice || formData.price}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1.5 text-[15px] border-b-2 border-green-200 focus:border-green-500 outline-none font-bold text-green-600 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Discount %</label>
+                            <input
+                                type="number"
+                                name="discountPercentage"
+                                value={formData.discountPercentage}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Box Number</label>
+                            <input
+                                type="text"
+                                name="boxNumber"
+                                value={formData.boxNumber}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Units / Strip <span className="text-red-500">*</span></label>
+                            <input
+                                type="number"
+                                name="netContent"
+                                required
+                                value={formData.netContent}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Item Amount</label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={formData.itemAmount}
+                                className="w-full px-2 py-1.5 text-[13px] border-b-2 border-gray-100 bg-gray-50 text-gray-500 outline-none cursor-not-allowed"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Discount Amt</label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={formData.discountAmount}
+                                className="w-full px-2 py-1.5 text-[13px] border-b-2 border-gray-100 bg-gray-50 text-gray-500 outline-none cursor-not-allowed"
+                            />
                         </div>
                     </div>
 
-                    {/* Section 3: Batch & Supplier Info */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Batch & Supplier</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Batch Number <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="batchNumber"
-                                    required
-                                    value={formData.batchNumber}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="Batch #123"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Supplier Name <span className="text-red-500">*</span>
-                                </label>
-                                {suppliers && suppliers.length > 0 ? (
-                                    <div className="relative">
-                                        <select
-                                            name="supplierName"
-                                            required
-                                            value={formData.supplierName}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none appearance-none bg-white"
-                                        >
-                                            <option value="">Select Supplier</option>
-                                            {suppliers.map(s => (
-                                                <option key={s._id} value={s.name}>{s.name}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-                                    </div>
-                                ) : (
-                                    <input
-                                        type="text"
-                                        name="supplierName"
-                                        required
-                                        value={formData.supplierName}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                        placeholder="Distributor Name"
-                                    />
-                                )}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Invoice Number <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="purchaseInvoiceNumber"
-                                    required
-                                    value={formData.purchaseInvoiceNumber}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="INV-001"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Invoice Date
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        value={formData.invoiceDate}
-                                        readOnly
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
-                                        title="Invoice date is automatically set to today's date"
-                                    />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">Auto</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Expiry Date
-                                </label>
-                                <input
-                                    type="date"
-                                    name="expiryDate"
-                                    value={formData.expiryDate}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                />
-                            </div>
+                    <div className="grid grid-cols-8 gap-5">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Taxable Amt</label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={formData.taxableAmount}
+                                className="w-full px-2 py-1.5 text-[13px] border-b-2 border-gray-100 bg-gray-50 text-gray-500 outline-none cursor-not-allowed"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">CGST % <span className="text-red-500">*</span></label>
+                            <input
+                                type="number"
+                                name="cgstPercentage"
+                                value={formData.cgstPercentage}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">CGST Amt</label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={formData.cgstAmount}
+                                className="w-full px-2 py-1.5 text-[13px] border-b-2 border-gray-100 bg-gray-50 text-gray-500 outline-none cursor-not-allowed"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">SGST % <span className="text-red-500">*</span></label>
+                            <input
+                                type="number"
+                                name="sgstPercentage"
+                                value={formData.sgstPercentage}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">SGST Amt</label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={formData.sgstAmount}
+                                className="w-full px-2 py-1.5 text-[13px] border-b-2 border-gray-100 bg-gray-50 text-gray-500 outline-none cursor-not-allowed"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">IGST % <span className="text-red-500">*</span></label>
+                            <input
+                                type="number"
+                                name="igstPercentage"
+                                value={formData.igstPercentage}
+                                onChange={handleChange}
+                                className="w-full px-2 py-1 text-[13px] border-b-2 border-gray-200 focus:border-green-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">IGST Amt</label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={formData.igstAmount}
+                                className="w-full px-2 py-1.5 text-[13px] border-b-2 border-gray-100 bg-gray-50 text-gray-500 outline-none cursor-not-allowed"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Total GST</label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={formData.totalGst}
+                                className="w-full px-2 py-1.5 text-[13px] border-b-2 border-gray-100 bg-gray-50 text-gray-500 outline-none cursor-not-allowed"
+                            />
                         </div>
                     </div>
 
-
-                    <div className="flex justify-end gap-3 pt-4 border-t">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-6 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors flex items-center gap-2 shadow-lg shadow-green-600/20"
-                        >
-                            <Save size={18} />
-                            Save Supply Entry
-                        </button>
+                    <div className="flex justify-between items-end mt-6 pt-4 border-t">
+                        <div className="flex flex-col">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Total Payable Amount</label>
+                            <span className="text-3xl font-black text-green-600">Rs. {formData.payableAmount}/-</span>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-6 py-2 border-2 border-gray-300 rounded-xl text-gray-700 font-bold hover:bg-gray-50 transition-all text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="px-8 py-2.5 bg-green-600 text-white rounded-xl font-black text-base hover:bg-green-700 transition-all flex items-center gap-2 shadow-xl shadow-green-600/30"
+                            >
+                                <Save size={20} />
+                                Save Supply Entry
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div >

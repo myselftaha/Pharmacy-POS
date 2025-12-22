@@ -45,7 +45,7 @@ const SupplyTable = ({ supplies, onEdit, onDelete }) => {
                                     Rs. {supply.purchaseCost.toFixed(2)}
                                 </td>
                                 <td className={`px-4 py-4 text-sm font-bold ${supply.currentStock <= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                    {supply.currentStock}
+                                    {supply.currentStock} <span className="text-[10px] text-gray-400 font-normal uppercase">Packs</span>
                                 </td>
                                 <td className={`px-4 py-4 text-sm font-medium ${supply.expiryDate && new Date(supply.expiryDate) <= new Date(new Date().setMonth(new Date().getMonth() + 3))
                                     ? 'text-red-500'

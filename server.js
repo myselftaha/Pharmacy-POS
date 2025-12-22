@@ -142,7 +142,17 @@ const medicineSchema = new mongoose.Schema({
         code: String,
         unit: String,
         packSize: { type: Number, default: 1 }
-    }]
+    }],
+    packSize: { type: Number, default: 1 }, // Items per pack
+    pricePerUnit: { type: Number, default: 0 }, // Selling price per single tablet
+    // Advanced Supply Fields
+    mrp: { type: Number, default: 0 },
+    sellingPrice: { type: Number, default: 0 },
+    discountPercentage: { type: Number, default: 0 },
+    boxNumber: String,
+    cgstPercentage: { type: Number, default: 0 },
+    sgstPercentage: { type: Number, default: 0 },
+    igstPercentage: { type: Number, default: 0 }
 });
 
 const Medicine = mongoose.model('Medicine', medicineSchema);
@@ -232,6 +242,23 @@ const supplySchema = new mongoose.Schema({
     manufacturingDate: Date,
     expiryDate: Date,
     quantity: { type: Number, required: true },
+    freeQuantity: { type: Number, default: 0 },
+    mrp: { type: Number, default: 0 },
+    purchaseCost: { type: Number, required: true }, // Cost per Qty
+    sellingPrice: { type: Number, default: 0 },
+    discountPercentage: { type: Number, default: 0 },
+    discountAmount: { type: Number, default: 0 },
+    itemAmount: { type: Number, default: 0 },
+    taxableAmount: { type: Number, default: 0 },
+    cgstPercentage: { type: Number, default: 0 },
+    cgstAmount: { type: Number, default: 0 },
+    sgstPercentage: { type: Number, default: 0 },
+    sgstAmount: { type: Number, default: 0 },
+    igstPercentage: { type: Number, default: 0 },
+    igstAmount: { type: Number, default: 0 },
+    totalGst: { type: Number, default: 0 },
+    payableAmount: { type: Number, default: 0 },
+    boxNumber: String,
     notes: String,
     // Item-level payment tracking
     paymentStatus: { type: String, enum: ['Unpaid', 'Partial', 'Paid'], default: 'Unpaid' },
@@ -531,7 +558,7 @@ app.get('/api/supplies', async (req, res) => {
             });
             return {
                 ...supply.toObject(),
-                currentStock: med ? med.stock : 0,
+                currentStock: med ? (med.stock / (parseFloat(med.netContent) || 1)) : 0,
                 // Merging medicine details for the UI
                 description: med ? med.description : '',
                 price: med ? med.price : 0,
@@ -559,17 +586,37 @@ app.post('/api/supplies', async (req, res) => {
             manufacturingDate,
             expiryDate,
             quantity,
+            freeQuantity,
+            mrp,
+            sellingPrice,
+            discountPercentage,
+            discountAmount,
+            itemAmount,
+            taxableAmount,
+            cgstPercentage,
+            cgstAmount,
+            sgstPercentage,
+            sgstAmount,
+            igstPercentage,
+            igstAmount,
+            totalGst,
+            payableAmount,
+            boxNumber,
             notes,
             category,
             description,
-            price, // Selling Price
             unit,
             netContent,
             minStock,
-            formulaCode, // NEW: Formula/Generic code
-            invoiceDate, // NEW: Auto-set invoice date
-            invoiceDueDate // Added
+            formulaCode,
+            invoiceDate,
+            invoiceDueDate
         } = req.body;
+
+        // Ensure supplierName is a string (handle potential object from frontend)
+        const finalSupplierName = (typeof supplierName === 'object' && supplierName !== null)
+            ? supplierName.name || ''
+            : supplierName || '';
 
         // 1. Create Supply Record
         // We'll link it to a medicineId after we find/create the medicine
@@ -579,6 +626,9 @@ app.post('/api/supplies', async (req, res) => {
         let medicine = await Medicine.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
         let medicineId = null;
 
+        const effectivePackSize = parseInt(netContent) || 1;
+        const stockIncrease = parseInt(quantity) * effectivePackSize;
+
         if (medicine) {
             // Update existing medicine
             console.log(`Supply: Found existing medicine ${name}. InInventory: ${medicine.inInventory}, Old Stock: ${medicine.stock}`);
@@ -586,17 +636,29 @@ app.post('/api/supplies', async (req, res) => {
             // FIX: If medicine was NOT in inventory (effectively deleted/inactive), treat this as a fresh start.
             // Reset stock to the new quantity instead of adding to old (possibly negative/stale) stock.
             if (!medicine.inInventory) {
-                medicine.stock = parseInt(quantity);
+                medicine.stock = stockIncrease;
                 console.log(`Supply: Reactivating item. Reset stock to ${medicine.stock}`);
             } else {
-                medicine.stock = (medicine.stock || 0) + parseInt(quantity);
+                medicine.stock = (medicine.stock || 0) + stockIncrease;
             }
 
             medicine.costPrice = purchaseCost;
-            medicine.supplier = supplierName;
+            medicine.supplier = finalSupplierName;
             medicine.expiryDate = expiryDate;
+            medicine.packSize = effectivePackSize;
+            medicine.pricePerUnit = (sellingPrice || medicine.price || 0) / effectivePackSize;
+
+            // Updated Advanced Fields
+            medicine.mrp = mrp || medicine.mrp;
+            medicine.sellingPrice = sellingPrice || medicine.sellingPrice;
+            medicine.price = sellingPrice || medicine.price; // Sync with existing price field
+            medicine.discountPercentage = discountPercentage || medicine.discountPercentage;
+            medicine.boxNumber = boxNumber || medicine.boxNumber;
+            medicine.cgstPercentage = cgstPercentage || medicine.cgstPercentage;
+            medicine.sgstPercentage = sgstPercentage || medicine.sgstPercentage;
+            medicine.igstPercentage = igstPercentage || medicine.igstPercentage;
+
             // Update other fields if provided (optional, but good to keep fresh)
-            if (price) medicine.price = price;
             if (category) medicine.category = category;
             if (description) medicine.description = description;
             if (formulaCode) {
@@ -620,34 +682,77 @@ app.post('/api/supplies', async (req, res) => {
                 name,
                 category: category || 'General',
                 description: description || '',
-                price: price || 0,
-                stock: parseInt(quantity),
+                price: sellingPrice || 0,
+                sellingPrice: sellingPrice || 0,
+                mrp: mrp || 0,
+                stock: (parseInt(quantity) + (parseInt(freeQuantity) || 0)) * effectivePackSize, // Stock is in single units
                 unit: unit || 'Piece',
                 netContent: netContent || '',
+                packSize: effectivePackSize,
+                pricePerUnit: (sellingPrice || 0) / effectivePackSize,
                 expiryDate,
                 costPrice: purchaseCost,
                 minStock: minStock || 10,
-                supplier: supplierName,
+                supplier: finalSupplierName,
                 note: notes,
-                formulaCode: formulaCode || '', // Add formula code
+                formulaCode,
                 genericName: formulaCode || '', // Use formula code as generic name fallback
-                inInventory: true
+                inInventory: true,
+                boxNumber: boxNumber || '',
+                cgstPercentage: cgstPercentage || 0,
+                sgstPercentage: sgstPercentage || 0,
+                igstPercentage: igstPercentage || 0,
+                status: 'Active'
             });
             await medicine.save();
             medicineId = nextId;
-            console.log(`Supply: Created new medicine ${name}. Stock: ${quantity}`);
+            console.log(`Supply: Created new medicine ${name} with stock ${medicine.stock}`);
         }
 
-        // 3. Check for Existing Credit (Advance Payment) & Create Supply
+        // 3. Create Supply Entry
+        const newSupply = new Supply({
+            medicineId,
+            name,
+            batchNumber,
+            supplierName: finalSupplierName,
+            purchaseCost,
+            purchaseInvoiceNumber,
+            manufacturingDate,
+            expiryDate,
+            quantity: parseInt(quantity),
+            freeQuantity: parseInt(freeQuantity) || 0,
+            mrp: parseFloat(mrp) || 0,
+            sellingPrice: parseFloat(sellingPrice) || 0,
+            discountPercentage: parseFloat(discountPercentage) || 0,
+            discountAmount: parseFloat(discountAmount) || 0,
+            itemAmount: parseFloat(itemAmount) || 0,
+            taxableAmount: parseFloat(taxableAmount) || 0,
+            cgstPercentage: parseFloat(cgstPercentage) || 0,
+            cgstAmount: parseFloat(cgstAmount) || 0,
+            sgstPercentage: parseFloat(sgstPercentage) || 0,
+            sgstAmount: parseFloat(sgstAmount) || 0,
+            igstPercentage: parseFloat(igstPercentage) || 0,
+            igstAmount: parseFloat(igstAmount) || 0,
+            totalGst: parseFloat(totalGst) || 0,
+            payableAmount: parseFloat(payableAmount) || 0,
+            boxNumber,
+            notes,
+            invoiceDate,
+            invoiceDueDate,
+            addedDate: invoiceDate || new Date()
+        });
+
+        await newSupply.save();
+
+        // 4. Check for Existing Credit (Advance Payment)
         let initialPaidAmount = 0;
         let initialPaymentStatus = 'Unpaid';
-        const totalSupplyCost = purchaseCost * quantity;
+        const totalSupplyCost = parseFloat(payableAmount) || (purchaseCost * quantity);
 
-        if (supplierName) {
-            const supplier = await Supplier.findOne({ name: { $regex: new RegExp(`^${supplierName}$`, 'i') } });
+        if (finalSupplierName) {
+            const supplier = await Supplier.findOne({ name: { $regex: new RegExp(`^${finalSupplierName}$`, 'i') } });
             if (supplier && supplier.totalPayable < 0) {
                 const creditAvailable = Math.abs(supplier.totalPayable);
-                console.log(`Supply: Found supplier credit of ${creditAvailable}`);
 
                 if (creditAvailable >= totalSupplyCost) {
                     initialPaidAmount = totalSupplyCost;
@@ -661,64 +766,13 @@ app.post('/api/supplies', async (req, res) => {
             }
         }
 
-        const newSupply = new Supply({
-            medicineId: medicineId.toString(),
-            name,
-            batchNumber,
-            supplierName,
-            purchaseCost,
-            purchaseInvoiceNumber,
-            manufacturingDate,
-            expiryDate,
-            quantity,
-            notes,
-            paymentStatus: initialPaymentStatus || 'Unpaid',
-            paidAmount: initialPaidAmount || 0,
-            invoiceDueDate, // Added
-            addedDate: new Date() // Explicit date when item was added
-        });
-
-        // HANDLE MANUAL PAYMENT / CREDIT AT CREATION
-        let effectivePaid = initialPaidAmount || 0;
-        let usedCredit = 0;
-
-        if (req.body.useCredit && supplierName) {
-            const supplier = await Supplier.findOne({ name: { $regex: new RegExp(`^${supplierName}$`, 'i') } });
-            if (supplier) {
-                const totalCost = purchaseCost * quantity;
-                if (supplier.creditBalance >= totalCost) {
-                    // Pay full amount with credit
-                    usedCredit = totalCost;
-                    supplier.creditBalance -= totalCost;
-                    newSupply.paymentStatus = 'Paid';
-                    newSupply.paidAmount = totalCost;
-                    effectivePaid = totalCost; // Treated as paid
-                    await supplier.save();
-                    console.log(`Supply: Paid with Credit. New Credit Balance: ${supplier.creditBalance}`);
-                } else {
-                    // Not enough credit - Fallback or Error? 
-                    // For now, let's just ignore credit if insufficient (or use partial? partial is complex).
-                    // We'll assume frontend checks. Or we can throw error.
-                    // throw new Error('Insufficient Supplier Credit');
-                    console.log('Supply: Insufficient Credit to pay automatically. supply set to Unpaid.');
-                }
-            }
-        }
-
-        const savedSupply = await newSupply.save();
-        console.log(`Supply: Created new supply record for Invoice ${purchaseInvoiceNumber}. Status: ${newSupply.paymentStatus}`);
-
         // 4. Update Supplier Balance (Outstanding Debt)
         // Only increase Payable by the amount that was NOT paid (by Cash or Credit)
-        if (supplierName) {
-            const supplier = await Supplier.findOne({ name: { $regex: new RegExp(`^${supplierName}$`, 'i') } });
+        if (finalSupplierName) {
+            const supplier = await Supplier.findOne({ name: { $regex: new RegExp(`^${finalSupplierName}$`, 'i') } });
             if (supplier) {
-                const totalCost = purchaseCost * quantity;
-                const unpaidAmount = totalCost - effectivePaid;
-
-                // If paid by Cash (initialPaidAmount), we assume it's settled immediately so net debt added is 0.
-                // If paid by Credit, effectivePaid is full, so net debt added is 0.
-                // If Unpaid, effectivePaid is 0, so net debt added is totalCost.
+                const totalCost = parseFloat(payableAmount) || (purchaseCost * quantity);
+                const unpaidAmount = totalCost - initialPaidAmount;
 
                 if (unpaidAmount > 0) {
                     supplier.totalPayable += unpaidAmount;
@@ -729,7 +783,16 @@ app.post('/api/supplies', async (req, res) => {
             }
         }
 
-        res.status(201).json(savedSupply);
+        // Update the payment fields on the already saved supply record
+        // Return the updated supply record
+        let finalSupply = newSupply;
+        if (initialPaidAmount > 0) {
+            finalSupply = await Supply.findByIdAndUpdate(newSupply._id, {
+                paymentStatus: initialPaymentStatus,
+                paidAmount: initialPaidAmount
+            }, { new: true });
+        }
+        res.status(201).json(finalSupply);
 
     } catch (err) {
         console.error("Supply Error:", err);
@@ -740,7 +803,7 @@ app.post('/api/supplies', async (req, res) => {
 // Update a supply record (and sync with inventory)
 app.put('/api/supplies/:id', async (req, res) => {
     try {
-        const {
+        let {
             name,
             batchNumber,
             supplierName,
@@ -749,18 +812,40 @@ app.put('/api/supplies/:id', async (req, res) => {
             manufacturingDate,
             expiryDate,
             quantity,
+            freeQuantity,
+            mrp,
+            sellingPrice,
+            discountPercentage,
+            discountAmount,
+            itemAmount,
+            taxableAmount,
+            cgstPercentage,
+            cgstAmount,
+            sgstPercentage,
+            sgstAmount,
+            igstPercentage,
+            igstAmount,
+            totalGst,
+            payableAmount,
+            boxNumber,
             notes,
             paymentStatus,
             paidAmount,
-            invoiceDueDate
+            invoiceDueDate,
+            netContent
         } = req.body;
+
+        // Ensure supplierName is a string (handle potential object from frontend)
+        if (typeof supplierName === 'object' && supplierName !== null) {
+            supplierName = supplierName.name || '';
+        }
 
         const supply = await Supply.findById(req.params.id);
         if (!supply) return res.status(404).json({ message: 'Supply not found' });
 
         const oldQuantity = supply.quantity || 0;
         const newQuantity = parseInt(quantity);
-        const quantityDiff = newQuantity - oldQuantity;
+        const effectivePackSize = parseInt(netContent) || parseInt(supply.netContent) || 1;
 
         // Update Supply Fields
         supply.name = name;
@@ -771,10 +856,27 @@ app.put('/api/supplies/:id', async (req, res) => {
         supply.manufacturingDate = manufacturingDate;
         supply.expiryDate = expiryDate;
         supply.quantity = newQuantity;
+        supply.freeQuantity = parseInt(freeQuantity) || 0;
+        supply.mrp = parseFloat(mrp) || 0;
+        supply.sellingPrice = parseFloat(sellingPrice) || 0;
+        supply.discountPercentage = parseFloat(discountPercentage) || 0;
+        supply.discountAmount = parseFloat(discountAmount) || 0;
+        supply.itemAmount = parseFloat(itemAmount) || 0;
+        supply.taxableAmount = parseFloat(taxableAmount) || 0;
+        supply.cgstPercentage = parseFloat(cgstPercentage) || 0;
+        supply.cgstAmount = parseFloat(cgstAmount) || 0;
+        supply.sgstPercentage = parseFloat(sgstPercentage) || 0;
+        supply.sgstAmount = parseFloat(sgstAmount) || 0;
+        supply.igstPercentage = parseFloat(igstPercentage) || 0;
+        supply.igstAmount = parseFloat(igstAmount) || 0;
+        supply.totalGst = parseFloat(totalGst) || 0;
+        supply.payableAmount = parseFloat(payableAmount) || 0;
+        supply.boxNumber = boxNumber;
         supply.notes = notes;
         supply.paymentStatus = paymentStatus;
         supply.paidAmount = paidAmount;
         supply.invoiceDueDate = invoiceDueDate;
+        if (netContent) supply.netContent = netContent;
 
         await supply.save();
 
@@ -793,21 +895,34 @@ app.put('/api/supplies/:id', async (req, res) => {
             }
 
             if (medicine) {
-                // Set medicine stock directly from the quantity provided
-                // (The form shows currentStock, so user expects to SET it, not add difference)
-                medicine.stock = newQuantity;
+                const stockDiff = (newQuantity * effectivePackSize) - (oldQuantity * effectivePackSize);
+                medicine.stock = (medicine.stock || 0) + stockDiff;
+                medicine.packSize = effectivePackSize;
+                medicine.netContent = effectivePackSize.toString();
 
-                // If user changed name/price in supply, should we update medicine?
-                // User said "completely linked". So yes.
+                // Sync all relevant fields
                 if (name) medicine.name = name;
                 if (purchaseCost) medicine.costPrice = purchaseCost;
                 if (expiryDate) medicine.expiryDate = expiryDate;
+                if (mrp) medicine.mrp = mrp;
+                if (sellingPrice) {
+                    medicine.sellingPrice = sellingPrice;
+                    medicine.price = sellingPrice;
+                }
+                if (discountPercentage) medicine.discountPercentage = discountPercentage;
+                if (boxNumber) medicine.boxNumber = boxNumber;
+                if (cgstPercentage) medicine.cgstPercentage = cgstPercentage;
+                if (sgstPercentage) medicine.sgstPercentage = sgstPercentage;
+                if (igstPercentage) medicine.igstPercentage = igstPercentage;
+
+                // Track supplier name in medicine model too
+                medicine.supplier = supplierName;
 
                 if (medicine.stock > 0) medicine.inInventory = true;
 
                 medicine.lastUpdated = new Date();
                 await medicine.save();
-                console.log(`Supply Update: Synced Medicine ${medicine.name}. New Stock: ${medicine.stock}`);
+                console.log(`Supply Update: Synced Medicine ${medicine.name}. New Stock: ${medicine.stock} units (${newQuantity} packs)`);
             }
         }
 
@@ -829,21 +944,26 @@ app.delete('/api/supplies/:id', async (req, res) => {
 
         // Sync with Medicine (Reduce Stock instead of hard delete)
         if (supply.medicineId) {
-            let medicine = await Medicine.findOne({
-                $or: [
-                    { id: parseInt(supply.medicineId) },
-                    { _id: supply.medicineId }
-                ]
-            });
+            const medicineIdStr = supply.medicineId.toString();
+            let medicine = null;
+
+            if (/^[0-9a-fA-F]{24}$/.test(medicineIdStr)) {
+                medicine = await Medicine.findById(supply.medicineId);
+            } else {
+                medicine = await Medicine.findOne({ id: parseInt(medicineIdStr, 10) });
+            }
 
             if (medicine) {
-                medicine.stock = (medicine.stock || 0) - supply.quantity;
+                const packSize = parseInt(supply.netContent) || 1;
+                const totalUnitsEntered = (parseInt(supply.quantity) || 0) * packSize;
+
+                medicine.stock = (medicine.stock || 0) - totalUnitsEntered;
                 if (medicine.stock <= 0) {
                     medicine.stock = 0;
-                    medicine.inInventory = false; // Deactivate if no stock
+                    medicine.inInventory = false;
                 }
                 await medicine.save();
-                console.log(`Cascade Delete: Reduced Stock for ${medicine.name}. New Stock: ${medicine.stock}`);
+                console.log(`Cascade Delete: Reduced Stock for ${medicine.name}. Removed ${totalUnitsEntered} units.`);
             }
         }
 
@@ -868,94 +988,6 @@ app.delete('/api/supplies/:id', async (req, res) => {
     }
 });
 
-// Update a supply record (and associated medicine)
-app.put('/api/supplies/:id', async (req, res) => {
-    console.log(`[PUT] /api/supplies/${req.params.id} called`);
-
-    try {
-        const {
-            name,
-            batchNumber,
-            supplierName,
-            purchaseCost,
-            purchaseInvoiceNumber,
-            manufacturingDate,
-            expiryDate,
-            quantity,
-            notes,
-            category,
-            description,
-            price,
-            unit,
-            netContent,
-            stock
-        } = req.body;
-
-        const supply = await Supply.findById(req.params.id);
-        if (!supply) return res.status(404).json({ message: 'Supply not found' });
-
-        const supplyUpdateData = {
-            name,
-            batchNumber,
-            supplierName,
-            purchaseInvoiceNumber,
-            manufacturingDate: manufacturingDate || null,
-            expiryDate: expiryDate || null,
-            notes
-        };
-
-        if (quantity !== undefined && quantity !== null && quantity !== '') {
-            supplyUpdateData.quantity = quantity;
-        }
-
-        if (purchaseCost !== undefined && purchaseCost !== null && purchaseCost !== '') {
-            supplyUpdateData.purchaseCost = purchaseCost;
-        }
-
-        const updatedSupply = await Supply.findByIdAndUpdate(
-            req.params.id,
-            supplyUpdateData,
-            { new: true, runValidators: true }
-        );
-
-        // Update Medicine
-        const medicine = await Medicine.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
-        if (medicine) {
-            if (category) medicine.category = category;
-            if (description) medicine.description = description;
-            if (price) medicine.price = price;
-            if (unit) medicine.unit = unit;
-            if (netContent) medicine.netContent = netContent;
-            if (purchaseCost) medicine.costPrice = purchaseCost;
-            if (supplierName) medicine.supplier = supplierName;
-            if (expiryDate) medicine.expiryDate = expiryDate;
-            if (stock !== undefined && stock !== null && stock !== '') {
-                medicine.stock = parseInt(stock);
-            }
-            medicine.lastUpdated = new Date();
-            await medicine.save();
-        }
-
-        // Simple Balance Update Logic (Difference)
-        const oldCost = supply.purchaseCost || 0;
-        const newCostVal = (purchaseCost !== undefined && purchaseCost !== null && purchaseCost !== '') ? parseFloat(purchaseCost) : oldCost;
-
-        if (oldCost !== newCostVal && supply.supplierName) {
-            const diff = newCostVal - oldCost;
-            const escapedName = supply.supplierName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const sup = await Supplier.findOne({ name: { $regex: new RegExp(`^${escapedName}$`, 'i') } });
-            if (sup) {
-                sup.totalPayable += diff;
-                await sup.save();
-            }
-        }
-
-        res.json(updatedSupply);
-    } catch (err) {
-        console.error('Update Supply Error:', err);
-        res.status(400).json({ message: err.message });
-    }
-});
 
 // Get Low Stock Medicines (Enriched with Forecasts & Supplier Info)
 app.get('/api/medicines/low-stock', async (req, res) => {
@@ -1060,9 +1092,17 @@ app.post('/api/medicines', async (req, res) => {
 // Update medicine
 app.put('/api/medicines/:id', async (req, res) => {
     try {
+        const updateData = { ...req.body, lastUpdated: new Date() };
+
+        // If stock is being updated, treat it as Strips/Packs and convert to Units
+        if (updateData.stock !== undefined) {
+            const packSize = parseInt(updateData.packSize) || 1;
+            updateData.stock = parseFloat(updateData.stock) * packSize;
+        }
+
         const updatedMedicine = await Medicine.findByIdAndUpdate(
             req.params.id,
-            { $set: { ...req.body, lastUpdated: new Date() } },
+            { $set: updateData },
             { new: true, runValidators: true }
         );
         if (!updatedMedicine) {
@@ -1397,7 +1437,14 @@ app.post('/api/transactions', async (req, res) => {
 
                 if (medicine) {
                     console.log(`Return: Medicine found: ${medicine.name}. Old Stock: ${medicine.stock}`);
-                    medicine.stock += item.quantity;
+
+                    const packSize = medicine.packSize || 1;
+                    const isPack = item.saleType === 'Pack';
+                    const restockAmount = isPack ? (item.quantity * packSize) : item.quantity;
+
+                    console.log(`Return Restock: Type=${item.saleType}, PackSize=${packSize}, Qty=${item.quantity} => TotalRestock=${restockAmount}`);
+
+                    medicine.stock += restockAmount;
                     await medicine.save();
                     console.log(`Return: Medicine updated: ${medicine.name}. New Stock: ${medicine.stock}`);
                 } else {
@@ -1505,9 +1552,16 @@ app.post('/api/transactions', async (req, res) => {
 
                 if (medicine) {
                     console.log(`Medicine found: ${medicine.name}. Old Stock: ${medicine.stock}`);
+
+                    // Logic for Pack vs Single Unit deduction
+                    const packSize = medicine.packSize || 1;
+                    const isPack = item.saleType === 'Pack';
+                    const deduction = isPack ? (item.quantity * packSize) : item.quantity;
+
+                    console.log(`Stock Deduction: Type=${item.saleType}, PackSize=${packSize}, Qty=${item.quantity} => TotalDeduction=${deduction}`);
+
                     // Ensure we don't go below zero (optional, but good practice)
-                    // For now, we allow negative stock or just simple subtraction as per requirement
-                    medicine.stock -= item.quantity;
+                    medicine.stock = Math.max(0, (medicine.stock || 0) - deduction);
                     await medicine.save();
                     console.log(`Medicine updated: ${medicine.name}. New Stock: ${medicine.stock}`);
                 } else {
@@ -3335,15 +3389,12 @@ app.get('/api/dashboard/stats', async (req, res) => {
                 salesReturns += Math.abs(tx.total);
 
                 tx.items.forEach(item => {
-                    // Find Cost
                     let cost = costMap[item.id] || costMap[item.name] || 0;
-                    // If item.id is integer in DB but string in item
                     if (!cost && !isNaN(item.id)) cost = costMap[parseInt(item.id)] || 0;
-
-                    const itemTotalCost = cost * (item.quantity || 0);
+                    const packSize = item.packSize || 1;
+                    const itemTotalCost = cost * ((item.quantity || 0) / packSize);
 
                     if (item.condition === 'Damaged') {
-
                         writeOffs += itemTotalCost;
                     } else {
                         // Restocked
@@ -3359,7 +3410,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
                 tx.items.forEach(item => {
                     let cost = costMap[item.id] || costMap[item.name] || 0;
                     if (!cost && !isNaN(item.id)) cost = costMap[parseInt(item.id)] || 0;
-                    cogsSold += (cost * (item.quantity || 0));
+                    const packSize = item.packSize || 1;
+                    cogsSold += (cost * ((item.quantity || 0) / packSize));
                 });
             }
         });
@@ -3402,10 +3454,16 @@ app.get('/api/dashboard/stats', async (req, res) => {
         });
 
         const lowStockDocs = activeMedicines.filter(m => {
-            return (m.stock <= (m.minStock || 10));
+            const packSize = m.packSize || 1;
+            const strips = m.stock / packSize;
+            return (strips <= (m.minStock || 10));
         });
 
-        const expiryValueAtRisk = expiringDocs.reduce((sum, m) => sum + (m.costPrice * m.stock), 0);
+        const expiryValueAtRisk = expiringDocs.reduce((sum, m) => {
+            const packSize = m.packSize || 1;
+            const strips = m.stock / packSize;
+            return sum + ((m.costPrice || 0) * strips);
+        }, 0);
 
         // Payables
         const suppliersList = await Supplier.find({}); // Need all suppliers for totals

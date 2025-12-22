@@ -50,7 +50,7 @@ const AddToInventoryModal = ({ isOpen, onClose, onConfirm, supplies }) => {
             price: price,
             costPrice: cost,
             margin: margin,
-            stock: product.stock || '',
+            stock: product.currentStock || (product.stock / (product.packSize || 1)) || '',
             expiryDate: product.expiryDate ? new Date(product.expiryDate).toISOString().split('T')[0] : ''
         });
     };

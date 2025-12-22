@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 
 const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, onUpdateIsUnit, onUpdateCustomPrice, onRemove }) => {
     // Initialize with prop value converted to string, empty if 1
@@ -69,14 +69,18 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
         }
     };
 
-    const effectivePrice = item.customPrice || item.price;
-    const subtotal = effectivePrice * item.quantity;
-    const total = Math.max(0, subtotal - (item.discount || 0));
+    const packSize = parseInt(item.packSize) || 1;
+    const isPack = (item.saleType || 'Single') === 'Pack';
+    const effectivePrice = isPack ? (item.customPrice || parseFloat(item.price)) : ((item.customPrice || parseFloat(item.price)) / packSize);
+    const total = effectivePrice * (parseInt(localQuantity) || 0) - (parseFloat(localDiscount) || 0);
 
     return (
         <tr className="border-b border-gray-100 hover:bg-gray-50">
             <td className="py-3 px-2">
                 <div className="font-medium text-gray-800 text-sm">{item.name}</div>
+                {item.mrp && (
+                    <div className="text-[10px] text-gray-400 line-through">MRP: Rs. {item.mrp}</div>
+                )}
             </td>
             <td className="py-3 px-1">
                 <input
@@ -117,27 +121,18 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
                 />
             </td>
             <td className="py-3 px-1">
-                <input
-                    type="text"
-                    inputMode="decimal"
-                    value={localDiscount}
-                    onFocus={(e) => e.target.select()}
-                    onChange={handleDiscountChange}
-                    onBlur={handleDiscountBlur}
-                    onKeyDown={handleKeyDown}
-                    className="w-16 h-8 text-center border border-gray-300 rounded-lg px-1 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
+                <div className="font-bold text-gray-800 text-sm">
+                    Rs. {effectivePrice.toFixed(2)}
+                    <span className="text-[10px] text-[#00c950] block font-bold">
+                        Sale Price
+                    </span>
+                    <span className="text-[10px] text-gray-400 block font-normal">
+                        {isPack ? 'per Pack' : 'per Unit'}
+                    </span>
+                </div>
             </td>
-            <td className="py-3 px-1 text-center">
-                <input
-                    type="checkbox"
-                    checked={item.isUnit || false}
-                    onChange={(e) => onUpdateIsUnit(item._id || item.id, e.target.checked)}
-                    className="w-4 h-4 accent-[#00c950] cursor-pointer"
-                />
-            </td>
-            <td className="py-3 px-1">
-                <div className="font-bold text-green-600 text-sm text-right">
+            <td className="py-3 px-1 text-right">
+                <div className="font-bold text-green-600 text-sm">
                     Rs. {total.toFixed(2)}
                 </div>
             </td>
@@ -163,6 +158,7 @@ const Cart = ({
     onRemove,
     onPrintBill,
     onAttachCustomer,
+    onClearAll,
     customer,
     discount = 0,
     paymentMethod,
@@ -184,6 +180,14 @@ const Cart = ({
         <div className="bg-white rounded-xl border border-gray-200 h-full flex flex-col">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-800">Current Sale</h2>
+                <button
+                    onClick={onClearAll}
+                    disabled={items.length === 0}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow-sm shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Trash2 size={14} />
+                    Clear
+                </button>
             </div>
 
             <div className="p-4 pb-2 text-sm text-gray-500">
@@ -200,8 +204,6 @@ const Cart = ({
                                 <th className="text-left py-2 px-1 font-semibold">Qty</th>
                                 <th className="text-left py-2 px-1 font-semibold">Type</th>
                                 <th className="text-left py-2 px-1 font-semibold">Price</th>
-                                <th className="text-left py-2 px-1 font-semibold">Disc</th>
-                                <th className="text-center py-2 px-1 font-semibold">Unit?</th>
                                 <th className="text-right py-2 px-2 font-semibold">Total</th>
                                 <th className="text-center py-2 px-1 font-semibold"></th>
                             </tr>

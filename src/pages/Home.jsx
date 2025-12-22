@@ -146,9 +146,12 @@ const Home = () => {
         const existingItem = cartItems.find(item => (item._id || item.id) === productId);
         const currentQty = existingItem ? existingItem.quantity : 0;
 
-        // Check stock
-        if (currentQty + quantityToAdd > product.stock) {
-            showToast(`Out of stock! Only ${product.stock} available.`, 'error');
+        // Check stock (default to Single for now)
+        const packSize = product.packSize || 1;
+        const totalStockNeeded = currentQty + quantityToAdd; // addToCart items are Single by default
+
+        if (totalStockNeeded > (product.stock || 0)) {
+            showToast(`Out of stock! Only ${product.stock} units available.`, 'error');
             return;
         }
 
@@ -163,6 +166,7 @@ const Home = () => {
                 ...product,
                 id: productId,
                 quantity: quantityToAdd,
+                packSize: product.packSize || 1,
                 saleType: 'Single',
                 discount: 0,
                 isUnit: false,
@@ -175,9 +179,12 @@ const Home = () => {
     const updateQuantity = (id, newQuantity) => {
         setCartItems(prev => prev.map(item => {
             if ((item._id || item.id) === id) {
-                // Check stock
-                if (newQuantity > item.stock) {
-                    showToast(`Out of stock! Only ${item.stock} available.`, 'error');
+                const packSize = item.packSize || 1;
+                const isPack = item.saleType === 'Pack';
+                const totalUnitsNeeded = newQuantity * (isPack ? packSize : 1);
+
+                if (totalUnitsNeeded > (item.stock || 0)) {
+                    showToast(`Out of stock! Only ${item.stock} units available.`, 'error');
                     return item;
                 }
                 return { ...item, quantity: newQuantity };
@@ -191,9 +198,20 @@ const Home = () => {
     };
 
     const updateSaleType = (id, saleType) => {
-        setCartItems(prev => prev.map(item =>
-            (item._id || item.id) === id ? { ...item, saleType } : item
-        ));
+        setCartItems(prev => prev.map(item => {
+            if ((item._id || item.id) === id) {
+                const packSize = item.packSize || 1;
+                const isPack = saleType === 'Pack';
+                const totalUnitsNeeded = item.quantity * (isPack ? packSize : 1);
+
+                if (totalUnitsNeeded > (item.stock || 0)) {
+                    showToast(`Out of stock! Converting to ${saleType} requires ${totalUnitsNeeded} units, but only ${item.stock} available.`, 'error');
+                    return item;
+                }
+                return { ...item, saleType };
+            }
+            return item;
+        }));
     };
 
     const updateDiscount = (id, discount) => {
@@ -578,16 +596,6 @@ const Home = () => {
                                 {selectedVoucher ? selectedVoucher.code : 'Vouchers'}
                             </span>
                         </button>
-                        <button
-                            onClick={() => {
-                                setSearchQuery('');
-                                setActiveCategory('All');
-                                setCartItems([]); // Clear Cart
-                            }}
-                            className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200"
-                        >
-                            <span className="text-base font-medium">Clear All</span>
-                        </button>
                     </div>
 
                     {/* Unified Search and Table Container */}
@@ -626,6 +634,7 @@ const Home = () => {
                                     <tr>
                                         <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Name</th>
                                         <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Location</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MRP</th>
                                         <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Sale Price</th>
                                         <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Stock</th>
                                     </tr>
@@ -648,12 +657,15 @@ const Home = () => {
                                                 <td className="py-4 px-4 text-sm text-gray-600">
                                                     {product.shelfLocation || 'N/A'}
                                                 </td>
-                                                <td className="py-4 px-4 text-sm text-gray-900 font-medium">
-                                                    {product.price}
+                                                <td className="py-4 px-4 text-sm text-gray-500 line-through">
+                                                    {product.mrp || '0.00'}
+                                                </td>
+                                                <td className="py-4 px-4 text-sm text-gray-900 font-bold">
+                                                    {product.sellingPrice || product.price}
                                                 </td>
                                                 <td className="py-4 px-4 text-sm font-medium">
                                                     <span className={isOutOfStock ? 'text-red-600' : 'text-gray-700'}>
-                                                        {product.stock}
+                                                        {isOutOfStock ? '0' : (product.stock / (product.packSize || 1)).toFixed(1)} <span className="text-[10px] text-gray-400 font-normal uppercase">Packs</span>
                                                     </span>
                                                 </td>
                                             </tr>
@@ -679,6 +691,11 @@ const Home = () => {
                         onUpdateIsUnit={updateIsUnit}
                         onUpdateCustomPrice={updateCustomPrice}
                         onRemove={removeFromCart}
+                        onClearAll={() => {
+                            setCartItems([]);
+                            setSearchQuery('');
+                            setActiveCategory('All');
+                        }}
                         onPrintBill={() => {
                             if (!selectedCustomer && (!customerInfo.name || !customerInfo.phone)) {
                                 showToast('Please select a customer or enter name and mobile', 'error');
