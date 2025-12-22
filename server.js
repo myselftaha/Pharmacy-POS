@@ -192,7 +192,9 @@ const transactionSchema = new mongoose.Schema({
         id: String,
         name: { type: String, required: true },
         email: String,
-        phone: String
+        phone: String,
+        doctorName: String,
+        billDate: String
     },
     items: [{
         id: String,
@@ -1419,8 +1421,39 @@ app.post('/api/transactions', async (req, res) => {
 
         } else {
             // NORMAL SALE Logic
-            // Update customer statistics if customer is provided
-            if (customer && customer.id) {
+            let finalCustomer = customer;
+
+            // Handle Customer Logic: If phone provided, find or create
+            if (customer && customer.phone) {
+                let existingCustomer = await Customer.findOne({ phone: customer.phone });
+
+                if (existingCustomer) {
+                    // Update existing customer stats
+                    existingCustomer.totalPurchases += 1;
+                    existingCustomer.totalSpent += total;
+                    // Optionally update name/email if they were blank before
+                    if (!existingCustomer.name || existingCustomer.name === 'Walk-in') existingCustomer.name = customer.name;
+                    if (!existingCustomer.email && customer.email) existingCustomer.email = customer.email;
+
+                    await existingCustomer.save();
+                    finalCustomer.id = existingCustomer._id;
+                } else if (customer.name && customer.name !== 'Walk-in') {
+                    // Create newline customer
+                    const newCustomer = new Customer({
+                        name: customer.name,
+                        phone: customer.phone,
+                        email: customer.email || '',
+                        address: 'POS Entry',
+                        joinDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                        totalPurchases: 1,
+                        totalSpent: total,
+                        status: 'Active'
+                    });
+                    const savedCustomer = await newCustomer.save();
+                    finalCustomer.id = savedCustomer._id;
+                }
+            } else if (customer && customer.id) {
+                // If only ID was provided (legacy or direct selection)
                 await Customer.findByIdAndUpdate(
                     customer.id,
                     {
@@ -1431,6 +1464,9 @@ app.post('/api/transactions', async (req, res) => {
                     }
                 );
             }
+
+            // Update transaction doc with found/created customer ID
+            await Transaction.findByIdAndUpdate(savedTransaction._id, { 'customer.id': finalCustomer.id });
 
             // Update voucher usage if voucher was used
             if (voucher && voucher.id) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
-import { Search, Ticket, Plus, ScanBarcode, UserRound, Zap, X } from 'lucide-react';
+import { Search, Ticket, Plus, ScanBarcode, UserRound, Zap, X, Calendar } from 'lucide-react';
 import CategoryFilter from '../components/pos/CategoryFilter';
 
 import Cart from '../components/pos/Cart';
@@ -49,6 +49,14 @@ const Home = () => {
     const [barcodeBuffer, setBarcodeBuffer] = useState('');
     const [lastScannedCode, setLastScannedCode] = useState('');
     const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
+    const [currentTransactionId, setCurrentTransactionId] = useState('');
+    const [customerInfo, setCustomerInfo] = useState({
+        name: '',
+        phone: '',
+        email: '',
+        doctorName: '',
+        billDate: new Date().toISOString().split('T')[0]
+    });
     const barcodeInputRef = React.useRef(null);
 
 
@@ -165,44 +173,44 @@ const Home = () => {
 
 
     const updateQuantity = (id, newQuantity) => {
-        if (newQuantity < 1) return;
-
-        const item = cartItems.find(i => i.id === id);
-        if (item && newQuantity > item.stock) {
-            showToast(`Cannot exceed available stock (${item.stock})`, 'warning');
-            return;
-        }
-
-        setCartItems(prev => prev.map(item =>
-            item.id === id ? { ...item, quantity: newQuantity } : item
-        ));
+        setCartItems(prev => prev.map(item => {
+            if ((item._id || item.id) === id) {
+                // Check stock
+                if (newQuantity > item.stock) {
+                    showToast(`Out of stock! Only ${item.stock} available.`, 'error');
+                    return item;
+                }
+                return { ...item, quantity: newQuantity };
+            }
+            return item;
+        }));
     };
 
     const removeFromCart = (id) => {
-        setCartItems(prev => prev.filter(item => item.id !== id));
+        setCartItems(prev => prev.filter(item => (item._id || item.id) !== id));
     };
 
     const updateSaleType = (id, saleType) => {
         setCartItems(prev => prev.map(item =>
-            item.id === id ? { ...item, saleType } : item
+            (item._id || item.id) === id ? { ...item, saleType } : item
         ));
     };
 
     const updateDiscount = (id, discount) => {
         setCartItems(prev => prev.map(item =>
-            item.id === id ? { ...item, discount } : item
+            (item._id || item.id) === id ? { ...item, discount } : item
         ));
     };
 
     const updateIsUnit = (id, isUnit) => {
         setCartItems(prev => prev.map(item =>
-            item.id === id ? { ...item, isUnit } : item
+            (item._id || item.id) === id ? { ...item, isUnit } : item
         ));
     };
 
     const updateCustomPrice = (id, customPrice) => {
         setCartItems(prev => prev.map(item =>
-            item.id === id ? { ...item, customPrice } : item
+            (item._id || item.id) === id ? { ...item, customPrice } : item
         ));
     };
 
@@ -214,7 +222,7 @@ const Home = () => {
             const focusInput = () => {
                 // Don't steal focus if user is typing in another input
                 const activeTag = document.activeElement?.tagName;
-                const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+                const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
 
                 if (barcodeInputRef.current && !isTyping) {
                     barcodeInputRef.current.focus();
@@ -301,8 +309,6 @@ const Home = () => {
     };
     // --- BARCODE LOGIC END ---
 
-    const [currentTransactionId, setCurrentTransactionId] = useState('');
-
     // ... existing useEffects ...
 
     const handlePrint = async () => {
@@ -311,6 +317,12 @@ const Home = () => {
         if (invalidItems.length > 0) {
             showToast('Please enter valid quantities for all items', 'error');
             console.error('Invalid quantities detected:', invalidItems);
+            return;
+        }
+
+        // Validate required customer fields
+        if (!selectedCustomer && (!customerInfo.name || !customerInfo.phone)) {
+            showToast('Customer Name and Mobile Number are required', 'error');
             return;
         }
 
@@ -323,13 +335,13 @@ const Home = () => {
             const transactionData = {
                 transactionId,
                 type: 'Sale', // Explicitly mark as Sale
-                customer: selectedCustomer ? {
-                    id: selectedCustomer._id,
-                    name: selectedCustomer.name,
-                    email: selectedCustomer.email,
-                    phone: selectedCustomer.phone
-                } : {
-                    name: 'Walk-in'
+                customer: {
+                    id: selectedCustomer?._id || null,
+                    name: customerInfo.name || selectedCustomer?.name || 'Walk-in',
+                    email: customerInfo.email || selectedCustomer?.email || '',
+                    phone: customerInfo.phone || selectedCustomer?.phone || '',
+                    doctorName: customerInfo.doctorName,
+                    billDate: customerInfo.billDate
                 },
                 items: cartItems.map(item => {
                     const effectivePrice = item.customPrice || parseFloat(item.price);
@@ -399,6 +411,13 @@ const Home = () => {
             setIsSuccessModalOpen(true);
             setCartItems([]);
             setSelectedCustomer(null);
+            setCustomerInfo({
+                name: '',
+                phone: '',
+                email: '',
+                doctorName: '',
+                billDate: new Date().toISOString().split('T')[0]
+            });
             setCurrentTransactionId(''); // Clear ID
             // Keep voucher selected for next transaction
 
@@ -437,179 +456,246 @@ const Home = () => {
     const cartTotal = subtotal + platformFee - discountAmount;
 
     return (
-        <div className="flex gap-6 h-[calc(100vh-8rem)] overflow-hidden">
+        <div className="flex flex-col h-[calc(100vh-8rem)] overflow-hidden">
             {loading && (
                 <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-50">
                     <Loader type="wave" message="Loading products..." size="lg" />
                 </div>
             )}
-            {/* Left Side - Product Table */}
-            <div className="flex-1 flex flex-col overflow-hidden overflow-x-hidden">
-                {/* Top Actions */}
-                <div className="flex gap-3 mb-6">
 
-                    <div className="relative">
+            {/* Customer Details Section - Full Width */}
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-4">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <UserRound size={18} className="text-[#00c950]" />
+                        <h3 className="font-bold text-gray-800">Customer Details</h3>
+                    </div>
+                    <button
+                        onClick={() => setIsAttachCustomerModalOpen(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow text-gray-700 hover:border-[#00c950]/50 hover:bg-green-50/10 transition-all duration-200 text-xs font-semibold"
+                    >
+                        <UserRound size={14} color="#00c950" strokeWidth={2} />
+                        <span>{selectedCustomer ? selectedCustomer.name : 'Select Existing'}</span>
+                    </button>
+                </div>
+                <div className="grid grid-cols-5 gap-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500">Customer Name <span className="text-red-500">*</span></label>
                         <input
-                            ref={barcodeInputRef}
                             type="text"
-                            value={barcodeBuffer}
-                            onChange={(e) => setBarcodeBuffer(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleBarcodeSubmit(e);
-                            }}
-                            className="opacity-0 absolute w-1 h-1 pointer-events-none"
-                            autoComplete="off"
+                            placeholder="Enter Name"
+                            value={customerInfo.name}
+                            onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
+                            className="w-full px-3 py-2 bg-gray-50 border border-transparent rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00c950]/20 focus:border-[#00c950] transition-all"
                         />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500">Mobile Number <span className="text-red-500">*</span></label>
+                        <input
+                            type="text"
+                            placeholder="Enter Mobile"
+                            value={customerInfo.phone}
+                            onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
+                            className="w-full px-3 py-2 bg-gray-50 border border-transparent rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00c950]/20 focus:border-[#00c950] transition-all"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500">Email ID</label>
+                        <input
+                            type="email"
+                            placeholder="Enter Email"
+                            value={customerInfo.email}
+                            onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
+                            className="w-full px-3 py-2 bg-gray-50 border border-transparent rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00c950]/20 focus:border-[#00c950] transition-all"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500">Doctor Name</label>
+                        <input
+                            type="text"
+                            placeholder="Enter Doctor Name"
+                            value={customerInfo.doctorName}
+                            onChange={(e) => setCustomerInfo(prev => ({ ...prev, doctorName: e.target.value }))}
+                            className="w-full px-3 py-2 bg-gray-50 border border-transparent rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00c950]/20 focus:border-[#00c950] transition-all"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500">Select Bill Date <span className="text-red-500">*</span></label>
+                        <div className="relative">
+                            <input
+                                type="date"
+                                value={customerInfo.billDate}
+                                onChange={(e) => setCustomerInfo(prev => ({ ...prev, billDate: e.target.value }))}
+                                className="w-full px-3 py-2 bg-gray-50 border border-transparent rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00c950]/20 focus:border-[#00c950] transition-all appearance-none"
+                            />
+                            <Calendar size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 flex gap-6 min-h-0 overflow-hidden">
+                {/* Left Side - Product Table */}
+                <div className="flex-1 flex flex-col overflow-hidden overflow-x-hidden">
+
+                    {/* Top Actions */}
+                    <div className="flex gap-3 mb-6">
+
+                        <div className="relative">
+                            <input
+                                ref={barcodeInputRef}
+                                type="text"
+                                value={barcodeBuffer}
+                                onChange={(e) => setBarcodeBuffer(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleBarcodeSubmit(e);
+                                }}
+                                className="opacity-0 absolute w-1 h-1 pointer-events-none"
+                                autoComplete="off"
+                            />
+                            <button
+                                onClick={() => setIsBarcodeMode(!isBarcodeMode)}
+                                className={`flex items-center gap-2 px-6 py-3 bg-white border rounded-xl shadow-sm hover:shadow transition-all duration-200 ${isBarcodeMode
+                                    ? 'border-[#00c950] bg-green-50/20 text-[#00c950]'
+                                    : 'border-gray-200 text-gray-700 hover:border-[#00c950]/50'
+                                    }`}
+                            >
+                                <ScanBarcode size={22} className={isBarcodeMode ? 'animate-pulse' : ''} color={isBarcodeMode ? '#00c950' : '#00c950'} strokeWidth={2} />
+                                <span className="text-base font-semibold">
+                                    {isBarcodeMode ? 'Barcode On' : 'Barcode Off'}
+                                </span>
+                            </button>
+                        </div>
                         <button
-                            onClick={() => setIsBarcodeMode(!isBarcodeMode)}
-                            className={`flex items-center gap-2 px-6 py-3 bg-white border rounded-xl shadow-sm hover:shadow transition-all duration-200 ${isBarcodeMode
+                            onClick={() => setIsVoucherModalOpen(true)}
+                            className={`flex items-center gap-2 px-6 py-3 bg-white border rounded-xl shadow-sm hover:shadow transition-all duration-200 ${selectedVoucher
                                 ? 'border-[#00c950] bg-green-50/20 text-[#00c950]'
                                 : 'border-gray-200 text-gray-700 hover:border-[#00c950]/50'
                                 }`}
                         >
-                            <ScanBarcode size={22} className={isBarcodeMode ? 'animate-pulse' : ''} color={isBarcodeMode ? '#00c950' : '#00c950'} strokeWidth={2} />
+                            <Ticket size={22} color="#00c950" strokeWidth={2} />
                             <span className="text-base font-semibold">
-                                {isBarcodeMode ? 'Barcode On' : 'Barcode Off'}
+                                {selectedVoucher ? selectedVoucher.code : 'Vouchers'}
                             </span>
                         </button>
+                        <button
+                            onClick={() => {
+                                setSearchQuery('');
+                                setActiveCategory('All');
+                                setCartItems([]); // Clear Cart
+                            }}
+                            className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200"
+                        >
+                            <span className="text-base font-medium">Clear All</span>
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setIsAttachCustomerModalOpen(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow text-gray-700 hover:border-[#00c950]/50 hover:bg-green-50/10 transition-all duration-200"
-                    >
-                        <UserRound size={22} color="#00c950" strokeWidth={2} />
-                        <span className="text-base font-semibold">{selectedCustomer ? selectedCustomer.name : 'Select Customer'}</span>
-                    </button>
-                    <button
-                        onClick={() => setIsVoucherModalOpen(true)}
-                        className={`flex items-center gap-2 px-6 py-3 bg-white border rounded-xl shadow-sm hover:shadow transition-all duration-200 ${selectedVoucher
-                            ? 'border-[#00c950] bg-green-50/20 text-[#00c950]'
-                            : 'border-gray-200 text-gray-700 hover:border-[#00c950]/50'
-                            }`}
-                    >
-                        <Ticket size={22} color="#00c950" strokeWidth={2} />
-                        <span className="text-base font-semibold">
-                            {selectedVoucher ? selectedVoucher.code : 'Vouchers'}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => {
-                            setSearchQuery('');
-                            setActiveCategory('All');
-                            setCartItems([]); // Clear Cart
-                        }}
-                        className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200"
-                    >
-                        <span className="text-base font-medium">Clear All</span>
-                    </button>
-                </div>
 
-                {/* Unified Search and Table Container */}
-                <div className="flex-1 min-h-0 flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    {/* Product Search Section */}
-                    <div className="p-6 pb-2">
-                        <h3 className="font-bold text-gray-800 mb-3">Product Search</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                <input
-                                    type="text"
-                                    placeholder="Enter Name"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-12 pr-6 py-3 border-transparent rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 bg-gray-100 placeholder-gray-500"
-                                />
-                            </div>
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                <input
-                                    type="text"
-                                    placeholder="Enter Formula/Code"
-                                    value={formulaSearch}
-                                    onChange={(e) => setFormulaSearch(e.target.value)}
-                                    className="pl-12 pr-6 py-3 border-transparent rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 bg-gray-100 placeholder-gray-500"
-                                />
+                    {/* Unified Search and Table Container */}
+                    <div className="flex-1 min-h-0 flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        {/* Product Search Section */}
+                        <div className="p-6 pb-2">
+                            <h3 className="font-bold text-gray-800 mb-3">Product Search</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="relative">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Name"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="pl-12 pr-6 py-3 border-transparent rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 bg-gray-100 placeholder-gray-500"
+                                    />
+                                </div>
+                                <div className="relative">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Formula/Code"
+                                        value={formulaSearch}
+                                        onChange={(e) => setFormulaSearch(e.target.value)}
+                                        className="pl-12 pr-6 py-3 border-transparent rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 bg-gray-100 placeholder-gray-500"
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Products Table Section */}
-                    <div className="flex-1 overflow-auto scrollbar-hide">
-                        <table className="w-full">
-                            <thead className="sticky top-0 bg-white border-b border-gray-200 z-10">
-                                <tr>
-                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Name</th>
-                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Location</th>
-                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Sale Price</th>
-                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Stock</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredMedicines.map(product => {
-                                    const isOutOfStock = product.stock <= 0;
-                                    // Using Custom Green Theme Color
-                                    const themeColor = 'bg-[#00c950]';
+                        {/* Products Table Section */}
+                        <div className="flex-1 overflow-auto scrollbar-hide">
+                            <table className="w-full">
+                                <thead className="sticky top-0 bg-white border-b border-gray-200 z-10">
+                                    <tr>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Name</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Location</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Sale Price</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Stock</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredMedicines.map(product => {
+                                        const isOutOfStock = product.stock <= 0;
+                                        // Using Custom Green Theme Color
+                                        const themeColor = 'bg-[#00c950]';
 
-                                    return (
-                                        <tr
-                                            key={product._id || product.id}
-                                            onClick={() => !isOutOfStock && addToCart(product)}
-                                            className={`hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                        >
-                                            <td className="py-4 px-4 text-sm text-gray-700 font-medium">
-                                                {product.name}
-                                            </td>
-                                            <td className="py-4 px-4 text-sm text-gray-600">
-                                                {product.shelfLocation || 'N/A'}
-                                            </td>
-                                            <td className="py-4 px-4 text-sm text-gray-900 font-medium">
-                                                {product.price}
-                                            </td>
-                                            <td className="py-4 px-4 text-sm font-medium">
-                                                <span className={isOutOfStock ? 'text-red-600' : 'text-gray-700'}>
-                                                    {product.stock}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                        {filteredMedicines.length === 0 && (
-                            <div className="text-center py-12 text-gray-500">
-                                No products found
-                            </div>
-                        )}
+                                        return (
+                                            <tr
+                                                key={product._id || product.id}
+                                                onClick={() => !isOutOfStock && addToCart(product)}
+                                                className={`hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                            >
+                                                <td className="py-4 px-4 text-sm text-gray-700 font-medium">
+                                                    {product.name}
+                                                </td>
+                                                <td className="py-4 px-4 text-sm text-gray-600">
+                                                    {product.shelfLocation || 'N/A'}
+                                                </td>
+                                                <td className="py-4 px-4 text-sm text-gray-900 font-medium">
+                                                    {product.price}
+                                                </td>
+                                                <td className="py-4 px-4 text-sm font-medium">
+                                                    <span className={isOutOfStock ? 'text-red-600' : 'text-gray-700'}>
+                                                        {product.stock}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                            {filteredMedicines.length === 0 && (
+                                <div className="text-center py-12 text-gray-500">
+                                    No products found
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
-            {/* Right Side - Cart */}
-            {/* Right Side - Cart */}
-            <div className="w-96">
-                <Cart
-                    items={cartItems}
-                    onUpdateQuantity={updateQuantity}
-                    onUpdateSaleType={updateSaleType}
-                    onUpdateDiscount={updateDiscount}
-                    onUpdateIsUnit={updateIsUnit}
-                    onUpdateCustomPrice={updateCustomPrice}
-                    onRemove={removeFromCart}
-                    onPrintBill={() => {
-                        if (!selectedCustomer) {
-                            showToast('Please select customer', 'error');
-                            return;
-                        }
-                        const newTxId = `#TX${Date.now()}`;
-                        setCurrentTransactionId(newTxId);
-                        setIsBillModalOpen(true);
-                    }}
-                    onAttachCustomer={() => setIsAttachCustomerModalOpen(true)}
-                    customer={selectedCustomer}
-                    discount={discountAmount}
-                    voucher={selectedVoucher}
-                    paymentMethod={paymentMethod}
-                    onPaymentMethodChange={setPaymentMethod}
-                />
+                {/* Right Side - Cart */}
+                <div className="w-[600px]">
+                    <Cart
+                        items={cartItems}
+                        onUpdateQuantity={updateQuantity}
+                        onUpdateSaleType={updateSaleType}
+                        onUpdateDiscount={updateDiscount}
+                        onUpdateIsUnit={updateIsUnit}
+                        onUpdateCustomPrice={updateCustomPrice}
+                        onRemove={removeFromCart}
+                        onPrintBill={() => {
+                            if (!selectedCustomer && (!customerInfo.name || !customerInfo.phone)) {
+                                showToast('Please select a customer or enter name and mobile', 'error');
+                                return;
+                            }
+                            const newTxId = `#TX${Date.now()}`;
+                            setCurrentTransactionId(newTxId);
+                            setIsBillModalOpen(true);
+                        }}
+                        onAttachCustomer={() => setIsAttachCustomerModalOpen(true)}
+                        customer={selectedCustomer}
+                        discount={discountAmount}
+                        voucher={selectedVoucher}
+                        paymentMethod={paymentMethod}
+                        onPaymentMethodChange={setPaymentMethod}
+                    />
+                </div>
             </div>
 
             <BillModal
@@ -618,7 +704,11 @@ const Home = () => {
                 items={cartItems}
                 total={cartTotal}
                 onPrint={handlePrint}
-                customer={selectedCustomer}
+                customer={selectedCustomer || {
+                    name: customerInfo.name,
+                    phone: customerInfo.phone,
+                    email: customerInfo.email
+                }}
                 discount={discountAmount}
                 transactionId={currentTransactionId}
                 paymentMethod={paymentMethod}
@@ -649,7 +739,7 @@ const Home = () => {
                 medicines={medicines}
                 onSaveMapping={handleMapBarcode}
             />
-        </div >
+        </div>
     );
 };
 

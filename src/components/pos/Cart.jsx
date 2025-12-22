@@ -31,9 +31,9 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
         const numVal = parseInt(localQuantity);
         if (!localQuantity || !numVal || numVal < 1) {
             setLocalQuantity('');
-            onUpdateQuantity(item.id, 1);
+            onUpdateQuantity(item._id || item.id, 1);
         } else {
-            onUpdateQuantity(item.id, numVal);
+            onUpdateQuantity(item._id || item.id, numVal);
         }
     };
 
@@ -47,7 +47,7 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
     const handleDiscountBlur = () => {
         const numVal = parseFloat(localDiscount) || 0;
         setLocalDiscount(numVal.toString());
-        onUpdateDiscount(item.id, numVal);
+        onUpdateDiscount(item._id || item.id, numVal);
     };
 
     const handlePriceChange = (e) => {
@@ -60,7 +60,7 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
     const handlePriceBlur = () => {
         const numVal = parseFloat(localPrice) || item.price;
         setLocalPrice(numVal);
-        onUpdateCustomPrice(item.id, numVal);
+        onUpdateCustomPrice(item._id || item.id, numVal);
     };
 
     const handleKeyDown = (e) => {
@@ -75,10 +75,10 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
 
     return (
         <tr className="border-b border-gray-100 hover:bg-gray-50">
-            <td className="py-3 px-3">
+            <td className="py-3 px-2">
                 <div className="font-medium text-gray-800 text-sm">{item.name}</div>
             </td>
-            <td className="py-3 px-2">
+            <td className="py-3 px-1">
                 <input
                     type="text"
                     inputMode="numeric"
@@ -92,10 +92,10 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
                     className="w-16 h-8 text-center border-2 border-blue-300 rounded-lg px-1 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
             </td>
-            <td className="py-3 px-2">
+            <td className="py-3 px-1">
                 <select
                     value={item.saleType || 'Single'}
-                    onChange={(e) => onUpdateSaleType(item.id, e.target.value)}
+                    onChange={(e) => onUpdateSaleType(item._id || item.id, e.target.value)}
                     className="w-24 h-8 text-sm border border-gray-300 rounded-lg px-1 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
                 >
                     <option value="Single">Single</option>
@@ -104,7 +104,7 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
                     <option value="Pack">Pack</option>
                 </select>
             </td>
-            <td className="py-3 px-2">
+            <td className="py-3 px-1">
                 <input
                     type="text"
                     inputMode="decimal"
@@ -116,7 +116,7 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
                     className="w-20 h-8 text-center border border-gray-300 rounded-lg px-1 text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
             </td>
-            <td className="py-3 px-2">
+            <td className="py-3 px-1">
                 <input
                     type="text"
                     inputMode="decimal"
@@ -128,22 +128,22 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
                     className="w-16 h-8 text-center border border-gray-300 rounded-lg px-1 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
             </td>
-            <td className="py-3 px-2 text-center">
+            <td className="py-3 px-1 text-center">
                 <input
                     type="checkbox"
                     checked={item.isUnit || false}
-                    onChange={(e) => onUpdateIsUnit(item.id, e.target.checked)}
+                    onChange={(e) => onUpdateIsUnit(item._id || item.id, e.target.checked)}
                     className="w-4 h-4 accent-[#00c950] cursor-pointer"
                 />
             </td>
-            <td className="py-3 px-3">
+            <td className="py-3 px-1">
                 <div className="font-bold text-green-600 text-sm text-right">
                     Rs. {total.toFixed(2)}
                 </div>
             </td>
-            <td className="py-3 px-2 text-center">
+            <td className="py-3 px-1 text-center">
                 <button
-                    onClick={() => onRemove(item.id)}
+                    onClick={() => onRemove(item._id || item.id)}
                     className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition-all"
                 >
                     <X size={16} />
@@ -196,20 +196,20 @@ const Cart = ({
                     <table className="w-full text-sm">
                         <thead className="sticky top-0 bg-white border-b-2 border-gray-200 z-10">
                             <tr className="text-xs text-gray-600">
-                                <th className="text-left py-2 px-3 font-semibold">Item</th>
-                                <th className="text-left py-2 px-2 font-semibold">Qty</th>
-                                <th className="text-left py-2 px-2 font-semibold">Type</th>
-                                <th className="text-left py-2 px-2 font-semibold">Price</th>
-                                <th className="text-left py-2 px-2 font-semibold">Disc</th>
-                                <th className="text-center py-2 px-2 font-semibold">Unit?</th>
-                                <th className="text-right py-2 px-3 font-semibold">Total</th>
-                                <th className="text-center py-2 px-2 font-semibold"></th>
+                                <th className="text-left py-2 px-2 font-semibold">Item</th>
+                                <th className="text-left py-2 px-1 font-semibold">Qty</th>
+                                <th className="text-left py-2 px-1 font-semibold">Type</th>
+                                <th className="text-left py-2 px-1 font-semibold">Price</th>
+                                <th className="text-left py-2 px-1 font-semibold">Disc</th>
+                                <th className="text-center py-2 px-1 font-semibold">Unit?</th>
+                                <th className="text-right py-2 px-2 font-semibold">Total</th>
+                                <th className="text-center py-2 px-1 font-semibold"></th>
                             </tr>
                         </thead>
                         <tbody>
                             {items.map((item) => (
                                 <CartItem
-                                    key={item.id}
+                                    key={item._id || item.id}
                                     item={item}
                                     onUpdateQuantity={onUpdateQuantity}
                                     onUpdateSaleType={onUpdateSaleType}
