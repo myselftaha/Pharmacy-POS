@@ -145,7 +145,10 @@ const Vouchers = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-800">Voucher Management</h2>
+                <div>
+                    <h2 className="text-xl font-bold text-gray-800">Voucher Management</h2>
+                    <p className="text-xs text-gray-500 mt-1 italic">Note: Only one voucher can be Active at a time. Activating one will deactivate others.</p>
+                </div>
                 <div className="flex gap-4">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />

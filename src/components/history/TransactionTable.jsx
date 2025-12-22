@@ -38,7 +38,7 @@ const TransactionTable = ({ transactions, onViewDetails, onVoid, onReturn, onDup
                         <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr className="text-xs font-bold text-gray-500 uppercase border-b border-gray-200">
                                 <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4">Transaction ID</th>
+                                <th className="px-6 py-4">Bill #</th>
                                 <th className="px-6 py-4">Date</th>
                                 <th className="px-6 py-4">Type</th>
                                 <th className="px-6 py-4 text-center">Items</th>
@@ -65,8 +65,10 @@ const TransactionTable = ({ transactions, onViewDetails, onVoid, onReturn, onDup
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 font-medium text-gray-900 text-sm">
-                                            {tx.transactionId}
-                                            {tx.originalTransactionId && <span className="block text-[10px] text-blue-500">Ref: {tx.originalTransactionId}</span>}
+                                            <span className="font-bold text-lg">{tx.billNumber ? `#${tx.billNumber}` : 'N/A'}</span>
+                                            {tx.originalBillNumber && (
+                                                <span className="block text-[10px] text-blue-500 font-bold mt-1">Ref: Bill #{tx.originalBillNumber}</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">{formatDate(tx.createdAt)}</td>
                                         <td className="px-6 py-4">

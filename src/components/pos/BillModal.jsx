@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Printer, CheckCircle } from 'lucide-react';
 
-const BillModal = ({ isOpen, onClose, items, total, onPrint, customer, discount = 0, transactionId, paymentMethod, voucher }) => {
+const BillModal = ({ isOpen, onClose, items, total, onPrint, customer, discount = 0, transactionId, billNumber, paymentMethod, voucher }) => {
     if (!isOpen) return null;
 
     const date = new Date().toLocaleString();
@@ -26,8 +26,8 @@ const BillModal = ({ isOpen, onClose, items, total, onPrint, customer, discount 
                         <h1 className="text-2xl font-bold text-gray-800 mb-1">MedKit POS</h1>
                         <p className="text-sm text-gray-500">Pharmacy Management System</p>
                         <p className="text-xs text-gray-400 mt-2">{date}</p>
-                        {transactionId && (
-                            <p className="text-xs font-mono font-bold text-gray-600 mt-1">Ref: {transactionId}</p>
+                        {billNumber && (
+                            <p className="text-xl font-bold text-gray-800 mt-1">Bill #: {billNumber}</p>
                         )}
                     </div>
 

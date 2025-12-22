@@ -21,8 +21,9 @@ const TransactionDetailsModal = ({ isOpen, onClose, transaction }) => {
                 {/* Header */}
                 <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-800">Transaction Details</h2>
-                        <p className="text-sm text-gray-500 mt-1">{transaction.transactionId}</p>
+                        <h2 className="text-2xl font-bold text-gray-800">
+                            {transaction.billNumber ? `Transaction #${transaction.billNumber}` : 'Transaction Details'}
+                        </h2>
                     </div>
                     <button
                         onClick={onClose}
@@ -112,8 +113,8 @@ const TransactionDetailsModal = ({ isOpen, onClose, transaction }) => {
 
                     {/* Total Breakdown */}
                     <div className={`rounded-lg p-4 ${transaction.type === 'Return'
-                            ? 'bg-red-50 border border-red-200'
-                            : 'bg-green-50 border border-green-200'
+                        ? 'bg-red-50 border border-red-200'
+                        : 'bg-green-50 border border-green-200'
                         }`}>
                         <div className={`flex items-center gap-2 mb-3 ${transaction.type === 'Return' ? 'text-red-800' : 'text-green-800'
                             }`}>

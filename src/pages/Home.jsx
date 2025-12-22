@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
-import { Search, Ticket, Plus, ScanBarcode, UserRound, Zap, X, Calendar } from 'lucide-react';
+import { Search, Plus, UserRound, X, Calendar } from 'lucide-react';
 import CategoryFilter from '../components/pos/CategoryFilter';
 
 import Cart from '../components/pos/Cart';
 import BillModal from '../components/pos/BillModal';
 import AttachCustomerModal from '../components/pos/AttachCustomerModal';
 import OrderSuccessModal from '../components/pos/OrderSuccessModal';
-import VoucherSelectionModal from '../components/pos/VoucherSelectionModal';
-import BarcodeMappingModal from '../components/pos/BarcodeMappingModal';
 import { categories } from '../data/mockData';
 import API_URL from '../config/api';
 import Loader from '../components/common/Loader';
@@ -25,15 +23,9 @@ const Home = () => {
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
     const [isAttachCustomerModalOpen, setIsAttachCustomerModalOpen] = useState(false);
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-    const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-    const [selectedCustomer, setSelectedCustomer] = useState(() => {
-        const saved = localStorage.getItem('selectedCustomer');
-        return saved ? JSON.parse(saved) : null;
-    });
-    const [selectedVoucher, setSelectedVoucher] = useState(() => {
-        const saved = localStorage.getItem('selectedVoucher');
-        return saved ? JSON.parse(saved) : null;
-    });
+    const [currentTransactionId, setCurrentTransactionId] = useState('');
+    const [currentBillNumber, setCurrentBillNumber] = useState(null);
+    const [selectedVoucher, setSelectedVoucher] = useState(null);
     const [medicines, setMedicines] = useState([]);
     const [supplies, setSupplies] = useState([]);
 
@@ -41,15 +33,10 @@ const Home = () => {
 
     const [paymentMethod, setPaymentMethod] = useState('Cash');
 
-    // Barcode System State
-    const [isBarcodeMode, setIsBarcodeMode] = useState(() => {
-        const saved = localStorage.getItem('isBarcodeMode');
-        return saved === 'true'; // simple boolean check
+    const [selectedCustomer, setSelectedCustomer] = useState(() => {
+        const saved = localStorage.getItem('selectedCustomer');
+        return saved ? JSON.parse(saved) : null;
     });
-    const [barcodeBuffer, setBarcodeBuffer] = useState('');
-    const [lastScannedCode, setLastScannedCode] = useState('');
-    const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
-    const [currentTransactionId, setCurrentTransactionId] = useState('');
     const [customerInfo, setCustomerInfo] = useState({
         name: '',
         phone: '',
@@ -57,7 +44,6 @@ const Home = () => {
         doctorName: '',
         billDate: new Date().toISOString().split('T')[0]
     });
-    const barcodeInputRef = React.useRef(null);
 
 
     // Fetch medicines from database
@@ -105,20 +91,20 @@ const Home = () => {
         }
     }, [selectedCustomer]);
 
-    // Persist selected voucher to localStorage
-    useEffect(() => {
-        if (selectedVoucher) {
-            localStorage.setItem('selectedVoucher', JSON.stringify(selectedVoucher));
-        } else {
-            localStorage.removeItem('selectedVoucher');
+    // Fetch active voucher automatically
+    const fetchActiveVoucher = async () => {
+        try {
+            const response = await fetch(`${API_URL}/api/vouchers/active`);
+            const data = await response.json();
+            if (data && data.status === 'Active') {
+                setSelectedVoucher(data);
+            } else {
+                setSelectedVoucher(null);
+            }
+        } catch (error) {
+            console.error('Error fetching active voucher:', error);
         }
-    }, [selectedVoucher]);
-
-
-    // Persist barcode mode
-    useEffect(() => {
-        localStorage.setItem('isBarcodeMode', isBarcodeMode);
-    }, [isBarcodeMode]);
+    };
 
     const filteredMedicines = medicines.filter(med => {
         const matchesCategory = activeCategory === 'All' || med.category === activeCategory;
@@ -232,100 +218,9 @@ const Home = () => {
         ));
     };
 
-    // --- BARCODE LOGIC START ---
-
-    // Focus management for hidden input
     useEffect(() => {
-        if (isBarcodeMode && !isBillModalOpen && !isAttachCustomerModalOpen && !isSuccessModalOpen && !isVoucherModalOpen && !isMappingModalOpen) {
-            const focusInput = () => {
-                // Don't steal focus if user is typing in another input
-                const activeTag = document.activeElement?.tagName;
-                const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
-
-                if (barcodeInputRef.current && !isTyping) {
-                    barcodeInputRef.current.focus();
-                }
-            };
-            focusInput();
-            const interval = setInterval(focusInput, 500); // Re-focus periodically to capture lost focus
-            return () => clearInterval(interval);
-        }
-    }, [isBarcodeMode, isBillModalOpen, isAttachCustomerModalOpen, isSuccessModalOpen, isVoucherModalOpen, isMappingModalOpen]);
-
-    const handleBarcodeSubmit = (e) => {
-        e.preventDefault();
-        const code = barcodeBuffer.trim();
-        if (!code) return;
-
-        console.log('Scanned:', code);
-        setBarcodeBuffer(''); // Clear buffer immediately
-
-        // 1. Direct Search in Medicines
-        let matchedProduct = null;
-        let matchedPackSize = 1;
-
-        // Check flat structure or nested barcodes
-        for (const med of medicines) {
-            // Check main ID/Name logic if needed, but primarily check barcode array
-            if (med.barcodes && med.barcodes.length > 0) {
-                const map = med.barcodes.find(b => b.code === code);
-                if (map) {
-                    matchedProduct = med;
-                    matchedPackSize = map.packSize || 1;
-                    break;
-                }
-            }
-            // Fallback: check exact ID match if it looks like ID
-            if (String(med.id) === code) {
-                matchedProduct = med;
-                break;
-            }
-        }
-
-        if (matchedProduct) {
-            // Found! Add to cart
-            showToast(`Scanned: ${matchedProduct.name}`, 'success');
-            addToCart(matchedProduct, matchedPackSize);
-        } else {
-            // Not found - Open Mapping Modal
-            // Check if it's a valid looking barcode (length > 3) to avoid accidental triggers
-            if (code.length > 2) {
-                showToast('Unknown barcode. Map it to a product.', 'info');
-                setLastScannedCode(code);
-                setIsMappingModalOpen(true);
-            }
-        }
-    };
-
-    const handleMapBarcode = async (mappingData) => {
-        try {
-            const response = await fetch(`${API_URL}/api/medicines/map-barcode`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(mappingData) // { medicineId, barcode, unit, packSize }
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                showToast('Barcode mapped successfully!', 'success');
-                setIsMappingModalOpen(false);
-                fetchMedicines(); // Refresh data
-
-                // Auto-add the mapped item to cart
-                if (data.medicine) {
-                    // Update the local medicine object immediately to reflect without reload
-                    addToCart(data.medicine, mappingData.packSize);
-                }
-            } else {
-                showToast(data.message || 'Failed to map barcode', 'error');
-            }
-        } catch (error) {
-            console.error('Map Error:', error);
-            showToast('Error mapping barcode', 'error');
-        }
-    };
-    // --- BARCODE LOGIC END ---
+        fetchActiveVoucher();
+    }, []);
 
     // ... existing useEffects ...
 
@@ -409,6 +304,14 @@ const Home = () => {
                 if (response.ok) {
                     console.log('✅ Transaction saved successfully to database!');
                     showToast('Transaction saved successfully!', 'success');
+
+                    // Capture bill number from response
+                    if (responseData && responseData.billNumber) {
+                        setCurrentBillNumber(responseData.billNumber);
+                        // Brief delay to allow state to update the DOM for printing
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+
                     // Refresh medicines to show updated stock
                     fetchMedicines();
                 } else {
@@ -437,6 +340,7 @@ const Home = () => {
                 billDate: new Date().toISOString().split('T')[0]
             });
             setCurrentTransactionId(''); // Clear ID
+            setCurrentBillNumber(null); // Clear Bill #
             // Keep voucher selected for next transaction
 
         } catch (error) {
@@ -556,47 +460,7 @@ const Home = () => {
                 {/* Left Side - Product Table */}
                 <div className="flex-1 flex flex-col overflow-hidden overflow-x-hidden">
 
-                    {/* Top Actions */}
-                    <div className="flex gap-3 mb-6">
-
-                        <div className="relative">
-                            <input
-                                ref={barcodeInputRef}
-                                type="text"
-                                value={barcodeBuffer}
-                                onChange={(e) => setBarcodeBuffer(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleBarcodeSubmit(e);
-                                }}
-                                className="opacity-0 absolute w-1 h-1 pointer-events-none"
-                                autoComplete="off"
-                            />
-                            <button
-                                onClick={() => setIsBarcodeMode(!isBarcodeMode)}
-                                className={`flex items-center gap-2 px-6 py-3 bg-white border rounded-xl shadow-sm hover:shadow transition-all duration-200 ${isBarcodeMode
-                                    ? 'border-[#00c950] bg-green-50/20 text-[#00c950]'
-                                    : 'border-gray-200 text-gray-700 hover:border-[#00c950]/50'
-                                    }`}
-                            >
-                                <ScanBarcode size={22} className={isBarcodeMode ? 'animate-pulse' : ''} color={isBarcodeMode ? '#00c950' : '#00c950'} strokeWidth={2} />
-                                <span className="text-base font-semibold">
-                                    {isBarcodeMode ? 'Barcode On' : 'Barcode Off'}
-                                </span>
-                            </button>
-                        </div>
-                        <button
-                            onClick={() => setIsVoucherModalOpen(true)}
-                            className={`flex items-center gap-2 px-6 py-3 bg-white border rounded-xl shadow-sm hover:shadow transition-all duration-200 ${selectedVoucher
-                                ? 'border-[#00c950] bg-green-50/20 text-[#00c950]'
-                                : 'border-gray-200 text-gray-700 hover:border-[#00c950]/50'
-                                }`}
-                        >
-                            <Ticket size={22} color="#00c950" strokeWidth={2} />
-                            <span className="text-base font-semibold">
-                                {selectedVoucher ? selectedVoucher.code : 'Vouchers'}
-                            </span>
-                        </button>
-                    </div>
+                    <div className="mb-2" />
 
                     {/* Unified Search and Table Container */}
                     <div className="flex-1 min-h-0 flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -728,6 +592,7 @@ const Home = () => {
                 }}
                 discount={discountAmount}
                 transactionId={currentTransactionId}
+                billNumber={currentBillNumber}
                 paymentMethod={paymentMethod}
                 voucher={selectedVoucher}
             />
@@ -743,19 +608,6 @@ const Home = () => {
                 onClose={() => setIsSuccessModalOpen(false)}
             />
 
-            <VoucherSelectionModal
-                isOpen={isVoucherModalOpen}
-                onClose={() => setIsVoucherModalOpen(false)}
-                onSelectVoucher={setSelectedVoucher}
-                currentVoucher={selectedVoucher}
-            />
-            <BarcodeMappingModal
-                isOpen={isMappingModalOpen}
-                onClose={() => setIsMappingModalOpen(false)}
-                scannedCode={lastScannedCode}
-                medicines={medicines}
-                onSaveMapping={handleMapBarcode}
-            />
         </div>
     );
 };

@@ -103,7 +103,7 @@ async function connectDB() {
 }
 
 // Call connectDB immediately for standard server, but in serverless it will be reused
-connectDB().catch(err => console.log('MongoDB Connection Error:', err));
+// connectDB() call removed to prevent early connection
 
 
 // Medicine Schema
@@ -192,12 +192,14 @@ const Voucher = mongoose.model('Voucher', voucherSchema);
 // Transaction Schema
 const transactionSchema = new mongoose.Schema({
     transactionId: { type: String, required: true, unique: true },
+    billNumber: { type: Number, unique: true },
     type: { type: String, enum: ['Sale', 'Return'], default: 'Sale' },
     status: { type: String, enum: ['Posted', 'Voided'], default: 'Posted' }, // Added status
     voidReason: String,
     voidedAt: Date,
     voidedBy: String,
     originalTransactionId: String, // For returns linked to sales
+    originalBillNumber: Number, // For returns linked to sales
     customer: {
         id: String,
         name: { type: String, required: true },
@@ -1259,6 +1261,16 @@ app.put('/api/customers/:id', async (req, res) => {
 
 // Voucher Routes
 
+// Get currently active voucher
+app.get('/api/vouchers/active', async (req, res) => {
+    try {
+        const voucher = await Voucher.findOne({ status: 'Active' });
+        res.json(voucher || null);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Get all vouchers
 app.get('/api/vouchers', async (req, res) => {
     try {
@@ -1272,6 +1284,9 @@ app.get('/api/vouchers', async (req, res) => {
 // Create voucher
 app.post('/api/vouchers', async (req, res) => {
     try {
+        if (req.body.status === 'Active') {
+            await Voucher.updateMany({}, { status: 'Inactive' });
+        }
         const newVoucher = new Voucher(req.body);
         const savedVoucher = await newVoucher.save();
         res.status(201).json(savedVoucher);
@@ -1286,6 +1301,9 @@ app.post('/api/vouchers', async (req, res) => {
 // Update voucher
 app.put('/api/vouchers/:id', async (req, res) => {
     try {
+        if (req.body.status === 'Active') {
+            await Voucher.updateMany({ _id: { $ne: req.params.id } }, { status: 'Inactive' });
+        }
         const updatedVoucher = await Voucher.findByIdAndUpdate(
             req.params.id,
             { $set: req.body },
@@ -1307,7 +1325,14 @@ app.put('/api/vouchers/:id/toggle-status', async (req, res) => {
         if (!voucher) {
             return res.status(404).json({ message: 'Voucher not found' });
         }
-        voucher.status = voucher.status === 'Active' ? 'Inactive' : 'Active';
+
+        const newStatus = voucher.status === 'Active' ? 'Inactive' : 'Active';
+
+        if (newStatus === 'Active') {
+            await Voucher.updateMany({ _id: { $ne: req.params.id } }, { status: 'Inactive' });
+        }
+
+        voucher.status = newStatus;
         await voucher.save();
         res.json(voucher);
     } catch (err) {
@@ -1402,8 +1427,21 @@ app.post('/api/transactions', async (req, res) => {
         const isReturn = type === 'Return';
         const finalTotal = isReturn && total > 0 ? -total : total;
 
+        // Auto-increment billNumber
+        const lastTransaction = await Transaction.findOne({}).sort({ billNumber: -1 });
+        const nextBillNumber = (lastTransaction && lastTransaction.billNumber) ? lastTransaction.billNumber + 1 : 1001;
+
+        // If it's a return, try to find the original bill number
+        let originalBillNumber = null;
+        if (isReturn && req.body.originalTransactionId) {
+            const originalTx = await Transaction.findOne({ transactionId: req.body.originalTransactionId });
+            if (originalTx) originalBillNumber = originalTx.billNumber;
+        }
+
         const newTransaction = new Transaction({
             ...req.body,
+            billNumber: nextBillNumber,
+            originalBillNumber,
             total: finalTotal,
             type: type || 'Sale'
         });
@@ -2388,7 +2426,9 @@ app.get('/api/transactions', async (req, res) => {
         if (searchQuery) {
             query.$or = [
                 { transactionId: { $regex: searchQuery, $options: 'i' } },
-                { 'customer.name': { $regex: searchQuery, $options: 'i' } }
+                { 'customer.name': { $regex: searchQuery, $options: 'i' } },
+                // If query is numeric, also search by billNumber
+                ...(!isNaN(searchQuery) && searchQuery.trim() !== '' ? [{ billNumber: parseInt(searchQuery) }] : [])
             ];
         }
 
@@ -2469,7 +2509,9 @@ app.get('/api/transactions/stats/summary', async (req, res) => {
         if (searchQuery) {
             query.$or = [
                 { transactionId: { $regex: searchQuery, $options: 'i' } },
-                { 'customer.name': { $regex: searchQuery, $options: 'i' } }
+                { 'customer.name': { $regex: searchQuery, $options: 'i' } },
+                // If query is numeric, also search by billNumber
+                ...(!isNaN(searchQuery) && searchQuery.trim() !== '' ? [{ billNumber: parseInt(searchQuery) }] : [])
             ];
         }
 
@@ -3392,7 +3434,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
                     let cost = costMap[item.id] || costMap[item.name] || 0;
                     if (!cost && !isNaN(item.id)) cost = costMap[parseInt(item.id)] || 0;
                     const packSize = item.packSize || 1;
-                    const itemTotalCost = cost * ((item.quantity || 0) / packSize);
+                    const qty = Math.abs(item.quantity || 0);
+                    const itemTotalCost = cost * (qty / packSize);
 
                     if (item.condition === 'Damaged') {
                         writeOffs += itemTotalCost;
@@ -3411,7 +3454,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
                     let cost = costMap[item.id] || costMap[item.name] || 0;
                     if (!cost && !isNaN(item.id)) cost = costMap[parseInt(item.id)] || 0;
                     const packSize = item.packSize || 1;
-                    cogsSold += (cost * ((item.quantity || 0) / packSize));
+                    const qty = Math.abs(item.quantity || 0);
+                    cogsSold += (cost * (qty / packSize));
                 });
             }
         });
@@ -3424,10 +3468,9 @@ app.get('/api/dashboard/stats', async (req, res) => {
             .reduce((sum, p) => sum + (p.amount || 0), 0);
 
 
-        const netCOGS = cogsSold - cogsRestocked - writeOffs; // Strictly cost of items currently in customer hands.
-
         const netSales = grossSales - salesReturns;
-        const netProfit = netSales - netCOGS - totalExpenses - writeOffs + purchaseReturns;
+        const netCOGS = cogsSold - cogsRestocked; // All item costs that didn't come back to shelf
+        const netProfit = netSales - netCOGS - totalExpenses + purchaseReturns;
 
 
         const today = new Date();
@@ -3492,7 +3535,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
             },
             profit: {
                 total: netProfit,
-                formula: '(Sales - Returns) - NetCOGS - Expenses - WriteOffs + PurchaseReturns'
+                formula: 'NetSales (Gross - Returns) - NetCOGS (Sold - Restocked) - Expenses + PurchaseReturns'
             },
             payables: {
                 total: totalPayables
@@ -4159,11 +4202,43 @@ function calculateReorderSuggestion(medicine) {
     };
 }
 
+const migrateBillNumbers = async () => {
+    try {
+        const count = await Transaction.countDocuments({ billNumber: { $exists: false } });
+        if (count > 0) {
+            console.log(`[Migration] Found ${count} transactions without billNumber. Backfilling...`);
+            const transactions = await Transaction.find({ billNumber: { $exists: false } }).sort({ createdAt: 1 });
+
+            // Determine start number. If we have some bill numbers, start after max. Else 1001.
+            let nextNum = 1001;
+            const lastTx = await Transaction.findOne({ billNumber: { $exists: true } }).sort({ billNumber: -1 });
+            if (lastTx && lastTx.billNumber) {
+                nextNum = lastTx.billNumber + 1;
+            }
+
+            for (const tx of transactions) {
+                tx.billNumber = nextNum++;
+                await tx.save();
+            }
+            console.log(`[Migration] Successfully added billNumbers to ${count} transactions.`);
+        }
+    } catch (err) {
+        console.error('[Migration] Error backfilling billNumbers:', err);
+    }
+};
+
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-        console.log('Routes: /api/medicines, /api/customers registered.');
-    });
+    // Basic local connection for standalone run
+    connectDB()
+        .then(async () => {
+            console.log('MongoDB Connected (Local Wrapper)');
+            await migrateBillNumbers();
+            app.listen(PORT, () => {
+                console.log(`Server running on port ${PORT}`);
+                console.log('Routes: /api/medicines, /api/customers registered.');
+            });
+        })
+        .catch(err => console.error('MongoDB Connection Error:', err));
 }
 
 export default app;

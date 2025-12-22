@@ -51,14 +51,14 @@ const Return = () => {
     const [returnReceipt, setReturnReceipt] = useState(null);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const defaultRestockBehavior = true; // Configurable default: true = Restock, false = Do Not Restock
-    
+
     // Refund method configuration - can be connected to store settings
     const [enabledRefundMethods, setEnabledRefundMethods] = useState({
         cash: true,
         card: false, // Set to false to hide by default, can be enabled via settings
         storeCredit: false // Set to false to hide by default, can be enabled via settings
     });
-    
+
     // Return reason options
     const returnReasons = [
         'Wrong item',
@@ -73,7 +73,7 @@ const Return = () => {
             // If somehow all are disabled, enable cash as fallback
             setEnabledRefundMethods(prev => ({ ...prev, cash: true }));
         }
-        
+
         // If current refund method is disabled, switch to Cash (or first available)
         if (refundMethod === 'Card' && !enabledRefundMethods.card) {
             setRefundMethod('Cash');
@@ -175,10 +175,10 @@ const Return = () => {
 
             const response = await fetch(url + params.toString());
             const result = await response.json();
-            
+
             // Handle both array response and object with data property
             const transactionsData = Array.isArray(result) ? result : (result.data || []);
-            
+
             // Filter only sales for returns (in case type filter didn't work)
             const sales = transactionsData.filter(tx => !tx.type || tx.type === 'Sale');
             setTransactions(sales);
@@ -196,6 +196,7 @@ const Return = () => {
             const lowerQuery = invoiceSearchQuery.toLowerCase();
             const filtered = transactions.filter(tx =>
                 (tx.transactionId && tx.transactionId.toLowerCase().includes(lowerQuery)) ||
+                (tx.billNumber && tx.billNumber.toString().includes(lowerQuery)) ||
                 (tx.customer && tx.customer.name.toLowerCase().includes(lowerQuery)) ||
                 (tx._id && tx._id.toLowerCase().includes(lowerQuery))
             );
@@ -221,7 +222,7 @@ const Return = () => {
                     const qty = parseInt(item.quantity) || 0;
                     return total + (item.price * qty);
                 }, 0);
-                
+
                 if (totalRefund > 0) {
                     e.preventDefault();
                     // Validate and show confirmation
@@ -413,11 +414,11 @@ const Return = () => {
             showToast('Return cart is empty', 'warning');
             return;
         }
-        
+
         if (!validateReturnCart()) {
             return;
         }
-        
+
         setShowConfirmationModal(true);
     };
 
@@ -572,7 +573,7 @@ const Return = () => {
                                             const availableStock = supplies
                                                 .filter(s => s.medicineId?.toString() === (med.id?.toString() || med._id?.toString()))
                                                 .reduce((sum, s) => sum + (parseInt(s.quantity) || 0), 0);
-                                            
+
                                             return (
                                                 <div
                                                     key={med._id || med.id}
@@ -597,7 +598,7 @@ const Return = () => {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <button 
+                                                    <button
                                                         className="p-2 text-gray-400 group-hover:text-red-500"
                                                         aria-label={`Add ${med.name} to return cart`}
                                                     >
@@ -670,7 +671,7 @@ const Return = () => {
                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                                         <input
                                             type="text"
-                                            placeholder="Search by Invoice # (e.g. TX123...) or Customer Name..."
+                                            placeholder="Search by Bill # or Customer Name..."
                                             value={invoiceSearchQuery}
                                             onChange={(e) => setInvoiceSearchQuery(e.target.value)}
                                             className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-sm"
@@ -688,7 +689,9 @@ const Return = () => {
                                                     >
                                                         <div>
                                                             <div className="flex items-center gap-2 mb-1">
-                                                                <span className="font-bold text-gray-800">{tx.transactionId || 'ID N/A'}</span>
+                                                                <span className="font-bold text-gray-800 text-lg">
+                                                                    {tx.billNumber ? `Bill #${tx.billNumber}` : 'N/A'}
+                                                                </span>
                                                                 <span className="text-xs text-gray-500">• {new Date(tx.createdAt).toLocaleDateString()}</span>
                                                             </div>
                                                             <div className="text-sm text-gray-600 flex items-center gap-1">
@@ -913,11 +916,10 @@ const Return = () => {
                                                         (i._id || i.id) === (item._id || item.id) ? { ...i, returnReason: val } : i
                                                     ));
                                                 }}
-                                                className={`w-full text-xs p-2 rounded border focus:outline-none ${
-                                                    !item.returnReason 
-                                                        ? 'border-red-300 bg-red-50' 
-                                                        : 'border-gray-200 bg-white'
-                                                }`}
+                                                className={`w-full text-xs p-2 rounded border focus:outline-none ${!item.returnReason
+                                                    ? 'border-red-300 bg-red-50'
+                                                    : 'border-gray-200 bg-white'
+                                                    }`}
                                                 required
                                             >
                                                 <option value="">Select reason...</option>
