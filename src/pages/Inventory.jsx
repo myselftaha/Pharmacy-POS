@@ -498,123 +498,96 @@ const Inventory = () => {
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-gray-50 sticky top-0 z-10">
                                 <tr>
-                                    <th className="px-6 py-4 w-12">
+                                    <th className="px-4 py-3 w-10">
                                         <button onClick={toggleSelectAll} className="flex items-center justify-center text-gray-400 hover:text-green-600">
-                                            {selectedItems.length > 0 && selectedItems.length === displayItems.length ? <CheckSquare size={20} className="text-green-600" /> : <Square size={20} />}
+                                            {selectedItems.length > 0 && selectedItems.length === displayItems.length ? <CheckSquare size={18} className="text-green-600" /> : <Square size={18} />}
                                         </button>
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
-                                        <div className="flex items-center gap-1">Product {sortConfig.key === 'name' && <ArrowUpDown size={14} />}</div>
+                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
+                                        <div className="flex items-center gap-1">Product {sortConfig.key === 'name' && <ArrowUpDown size={12} />}</div>
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('location')}>
-                                        <div className="flex items-center gap-1">Location {sortConfig.key === 'location' && <ArrowUpDown size={14} />}</div>
+                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:bg-gray-100" onClick={() => handleSort('location')}>
+                                        <div className="flex items-center gap-1">Location {sortConfig.key === 'location' && <ArrowUpDown size={12} />}</div>
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stock')}>
-                                        <div className="flex items-center gap-1">Stock (Packs) {sortConfig.key === 'stock' && <ArrowUpDown size={14} />}</div>
+                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stock')}>
+                                        <div className="flex items-center gap-1">Stock {sortConfig.key === 'stock' && <ArrowUpDown size={12} />}</div>
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Pricing (Pack)</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('margin')}>
-                                        <div className="flex items-center gap-1">Margin {sortConfig.key === 'margin' && <ArrowUpDown size={14} />}</div>
+                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Pricing</th>
+                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:bg-gray-100" onClick={() => handleSort('margin')}>
+                                        <div className="flex items-center gap-1">Margin {sortConfig.key === 'margin' && <ArrowUpDown size={12} />}</div>
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Action</th>
+                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {displayItems.length > 0 ? (
                                     displayItems.map((item) => (
                                         <tr key={item._id} className={`hover:bg-green-50/30 transition-colors group ${selectedItems.includes(item._id) ? 'bg-green-50/50' : ''}`}>
-                                            <td className="px-6 py-4">
+                                            <td className="px-4 py-3">
                                                 <button onClick={() => toggleSelectItem(item._id)} className="flex items-center justify-center text-gray-400 hover:text-green-600">
-                                                    {selectedItems.includes(item._id) ? <CheckSquare size={20} className="text-green-600" /> : <Square size={20} />}
+                                                    {selectedItems.includes(item._id) ? <CheckSquare size={18} className="text-green-600" /> : <Square size={18} />}
                                                 </button>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="font-bold text-gray-800 leading-tight">{item.name}</div>
-                                                <div className="text-[10px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded inline-block mt-1">
-                                                    {item.genericName || item.formulaCode || 'No Formula'}
+                                            <td className="px-4 py-3">
+                                                <div className="font-bold text-gray-800 text-xs leading-tight">{item.name}</div>
+                                                <div className="text-[9px] font-black text-green-700 bg-green-50 px-1 py-0.5 rounded inline-block mt-0.5 uppercase">
+                                                    {item.genericName || item.formulaCode || 'N/A'}
                                                 </div>
-                                                {item.sku && <div className="text-[10px] text-gray-400 mt-0.5 font-mono">SKU: {item.sku}</div>}
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-4 py-3">
                                                 <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-gray-700">{item.boxNumber || '-'}</span>
+                                                    <span className="text-[11px] font-bold text-gray-700">{item.boxNumber || '-'}</span>
                                                     <span className="text-[10px] text-gray-400">{item.category}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1">
-                                                    <span className={`inline-flex items-center w-fit px-2 py-0.5 rounded-full text-[11px] font-black ${item.stock <= 0
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black ${item.stock <= 0
                                                         ? 'bg-red-600 text-white'
                                                         : (item.stock / (item.packSize || 1)) <= (item.minStock || 10)
-                                                            ? 'bg-orange-100 text-orange-800 border border-orange-200'
-                                                            : 'bg-green-100 text-green-800 border border-green-200'
+                                                            ? 'bg-orange-100 text-orange-800'
+                                                            : 'bg-green-100 text-green-800'
                                                         }`}>
                                                         {item.stock <= 0 ? 'OUT' : `${(item.stock / (item.packSize || 1)).toFixed(1)} PKs`}
                                                     </span>
-                                                    <span className="text-[10px] text-gray-400 font-medium">
-                                                        Val: {(((item.stock || 0) / (item.packSize || 1)) * (item.costPrice || 0)).toLocaleString()}/-
+                                                    <span className="text-[9px] text-gray-400 font-bold mt-0.5">
+                                                        Val: {(((item.stock || 0) / (item.packSize || 1)) * (item.costPrice || 0)).toLocaleString()}
                                                     </span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-0.5">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-[10px] text-gray-400 w-8">Cost:</span>
-                                                        <span className="text-xs font-bold text-gray-600">{item.costPrice}/-</span>
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[9px] text-gray-400 font-bold uppercase">Sale:</span>
+                                                        <span className="text-[11px] font-black text-green-700">{item.price}/-</span>
                                                     </div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-[10px] text-gray-400 w-8">MRP:</span>
-                                                        <span className="text-xs font-bold text-orange-600">{item.mrp || 0}/-</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 pt-0.5 border-t border-gray-50 mt-0.5">
-                                                        <span className="text-[10px] text-gray-400 w-8 uppercase font-black">Sale:</span>
-                                                        {editingPrice.id === item._id ? (
-                                                            <input
-                                                                autoFocus
-                                                                type="number"
-                                                                className="w-16 px-1 py-0.5 border border-green-300 rounded text-[11px] focus:outline-none"
-                                                                value={editingPrice.value}
-                                                                onChange={(e) => setEditingPrice({ ...editingPrice, value: e.target.value })}
-                                                                onBlur={() => handlePriceEditSubmit(item)}
-                                                                onKeyDown={(e) => e.key === 'Enter' && handlePriceEditSubmit(item)}
-                                                            />
-                                                        ) : (
-                                                            <div
-                                                                className="text-xs font-black text-green-700 cursor-pointer hover:underline"
-                                                                onClick={() => setEditingPrice({ id: item._id, value: item.price })}
-                                                            >
-                                                                {item.price}/-
-                                                            </div>
-                                                        )}
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[9px] text-gray-400 font-bold uppercase">MRP:</span>
+                                                        <span className="text-[10px] font-bold text-orange-600">{item.mrp || 0}/-</span>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                {(() => {
-                                                    const margin = ((item.price - item.costPrice) / item.price * 100);
-                                                    return (
-                                                        <div className="flex flex-col">
-                                                            <span className={`text-xs font-black ${margin < 10 ? 'text-red-600' : 'text-green-600'}`}>
-                                                                {margin.toFixed(1)}%
-                                                            </span>
-                                                            {item.discountPercentage > 0 && (
-                                                                <span className="text-[9px] text-orange-500 font-bold">-{item.discountPercentage}% Disc</span>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })()}
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col items-start">
+                                                    <span className={`text-[11px] font-black ${((item.price - item.costPrice) / item.price * 100) < 10 ? 'text-red-600' : 'text-green-600'}`}>
+                                                        {((item.price - item.costPrice) / item.price * 100).toFixed(1)}%
+                                                    </span>
+                                                    {item.discountPercentage > 0 && (
+                                                        <span className="text-[9px] text-orange-500 font-bold">-{item.discountPercentage}% Disc</span>
+                                                    )}
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 rounded-lg text-[10px] font-black border tracking-wider uppercase ${item.status === 'Inactive'
+                                            <td className="px-4 py-3">
+                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black border uppercase ${item.status === 'Inactive'
                                                     ? 'bg-gray-100 text-gray-500 border-gray-200'
                                                     : 'bg-green-50 text-green-600 border-green-200'
                                                     }`}>
                                                     {item.status || 'Active'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
                                                     <button
                                                         onClick={() => {
                                                             setSelectedItem(item);
