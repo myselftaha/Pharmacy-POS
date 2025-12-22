@@ -22,7 +22,7 @@ const Inventory = () => {
     // New Features State
     const [selectedItems, setSelectedItems] = useState([]);
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
-    const [advancedFilters, setAdvancedFilters] = useState({ status: 'All' });
+    const [advancedFilters, setAdvancedFilters] = useState({ status: 'All', category: 'All' });
     const [editingPrice, setEditingPrice] = useState({ id: null, value: '' });
     const [enrichedLowStockItems, setEnrichedLowStockItems] = useState([]);
     const { showToast } = useToast();
@@ -208,19 +208,25 @@ const Inventory = () => {
         const excelData = dataToExport.map(item => ({
             'ID': item.id || item._id,
             'Name': item.name,
-            'SKU': item.sku || 'N/A',
+            'Product Name': item.name,
+            'Formula Code': item.genericName || item.formulaCode || '-',
             'Category': item.category,
-            'Unit': item.unit || '',
+            'Box/Shelf': item.boxNumber || '-',
             'Stock (Packs)': (item.stock / (item.packSize || 1)).toFixed(2),
-            'Min Stock (Packs)': item.minStock || 10,
-            'Cost Price (Pack)': item.costPrice || 0,
-            'Pack Price (Sale)': item.price,
-            'Items per Pack': item.packSize || 1,
-            'Unit Price': (item.price / (item.packSize || 1)).toFixed(2),
+            'Unit': item.unit,
+            'Items/Pack': item.packSize,
+            'Cost Price (Pack)': item.costPrice,
+            'MRP (Pack)': item.mrp || 0,
+            'Selling Price (Pack)': item.price,
+            'Discount %': item.discountPercentage || 0,
+            'Margin %': ((item.price - (item.costPrice || 0)) / (item.price || 1) * 100).toFixed(2) + '%', // Ensure no division by zero
             'Total Stock Value': ((item.stock / (item.packSize || 1)) * (item.costPrice || 0)).toFixed(2),
-            'Status': item.status || 'Active',
+            'CGST %': item.cgstPercentage || 0,
+            'SGST %': item.sgstPercentage || 0,
+            'IGST %': item.igstPercentage || 0,
+            'Status': item.status,
             'Expiry Date': item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : 'N/A',
-            'Last Updated': item.lastUpdated ? new Date(item.lastUpdated).toLocaleString() : 'N/A'
+            'Last Updated': item.lastUpdated ? new Date(item.lastUpdated).toLocaleDateString() : '-'
         }));
 
         // Create worksheet
@@ -262,11 +268,15 @@ const Inventory = () => {
             const term = searchQuery.toLowerCase();
             const matchesSearch = med.name.toLowerCase().includes(term) ||
                 (med.sku && med.sku.toLowerCase().includes(term)) ||
+                (med.genericName && med.genericName.toLowerCase().includes(term)) ||
+                (med.formulaCode && med.formulaCode.toLowerCase().includes(term)) ||
+                (med.boxNumber && med.boxNumber.toLowerCase().includes(term)) ||
                 (med.barcodes && med.barcodes.some(b => b.code && b.code.toLowerCase().includes(term)));
 
             const matchesStatus = advancedFilters.status === 'All' || med.status === advancedFilters.status;
+            const matchesCategory = advancedFilters.category === 'All' || med.category === advancedFilters.category;
 
-            return matchesSearch && matchesStatus;
+            return matchesSearch && matchesStatus && matchesCategory;
         });
     };
 
@@ -326,6 +336,12 @@ const Inventory = () => {
             } else if (key === 'stock') {
                 valA = (a.stock || 0) / (a.packSize || 1);
                 valB = (b.stock || 0) / (b.packSize || 1);
+            } else if (key === 'margin') {
+                valA = ((a.price - (a.costPrice || 0)) / (a.price || 1));
+                valB = ((b.price - (b.costPrice || 0)) / (b.price || 1));
+            } else if (key === 'location') {
+                valA = a.boxNumber || '';
+                valB = b.boxNumber || '';
             } else if (key === 'lastUpdated') {
                 valA = new Date(a.lastUpdated || 0).getTime();
                 valB = new Date(b.lastUpdated || 0).getTime();
@@ -439,7 +455,22 @@ const Inventory = () => {
 
             {/* Advanced Filters */}
             <div className="mb-6 flex flex-wrap items-center gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                {/* Category Filter Removed */}
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">Category:</span>
+                    <div className="relative">
+                        <select
+                            value={advancedFilters.category}
+                            onChange={(e) => setAdvancedFilters(prev => ({ ...prev, category: e.target.value }))}
+                            className="appearance-none pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 cursor-pointer shadow-sm hover:border-gray-300 transition-colors"
+                        >
+                            <option value="All">All Categories</option>
+                            {[...new Set(inventoryItems.map(m => m.category).filter(Boolean))].sort().map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+                    </div>
+                </div>
 
                 {activeTab !== 'expires' && (
                     <div className="flex items-center gap-2">
@@ -475,20 +506,17 @@ const Inventory = () => {
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
                                         <div className="flex items-center gap-1">Product {sortConfig.key === 'name' && <ArrowUpDown size={14} />}</div>
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Items/Pack</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Unit</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('location')}>
+                                        <div className="flex items-center gap-1">Location {sortConfig.key === 'location' && <ArrowUpDown size={14} />}</div>
+                                    </th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stock')}>
-                                        <div className="flex items-center gap-1">Packs Stock {sortConfig.key === 'stock' && <ArrowUpDown size={14} />}</div>
+                                        <div className="flex items-center gap-1">Stock (Packs) {sortConfig.key === 'stock' && <ArrowUpDown size={14} />}</div>
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Stock Value</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('price')}>
-                                        <div className="flex items-center gap-1">Pack Price {sortConfig.key === 'price' && <ArrowUpDown size={14} />}</div>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Pricing (Pack)</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('margin')}>
+                                        <div className="flex items-center gap-1">Margin {sortConfig.key === 'margin' && <ArrowUpDown size={14} />}</div>
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Unit Price</th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('lastUpdated')}>
-                                        <div className="flex items-center gap-1">Updated {sortConfig.key === 'lastUpdated' && <ArrowUpDown size={14} />}</div>
-                                    </th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Action</th>
                                 </tr>
                             </thead>
@@ -502,64 +530,88 @@ const Inventory = () => {
                                                 </button>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-gray-800">{item.name}</div>
-                                                {item.sku && <div className="text-xs text-gray-500 font-mono">SKU: {item.sku}</div>}
+                                                <div className="font-bold text-gray-800 leading-tight">{item.name}</div>
+                                                <div className="text-[10px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded inline-block mt-1">
+                                                    {item.genericName || item.formulaCode || 'No Formula'}
+                                                </div>
+                                                {item.sku && <div className="text-[10px] text-gray-400 mt-0.5 font-mono">SKU: {item.sku}</div>}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-sm font-bold text-blue-600">{item.packSize || 1}</div>
-                                                <span className="text-[10px] text-gray-400 block">{item.unit || '-'}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-gray-700">{item.boxNumber || '-'}</span>
+                                                    <span className="text-[10px] text-gray-400">{item.category}</span>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.stock <= 0
-                                                    ? 'bg-red-600 text-white'
-                                                    : (item.stock / (item.packSize || 1)) <= (item.minStock || 10)
-                                                        ? 'bg-orange-100 text-orange-800'
-                                                        : 'bg-green-100 text-green-800'
-                                                    }`}>
-                                                    {item.stock <= 0 ? 'Out of Stock' : `${(item.stock / (item.packSize || 1)).toFixed(1)} Packs`}
-                                                </span>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className={`inline-flex items-center w-fit px-2 py-0.5 rounded-full text-[11px] font-black ${item.stock <= 0
+                                                        ? 'bg-red-600 text-white'
+                                                        : (item.stock / (item.packSize || 1)) <= (item.minStock || 10)
+                                                            ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                                                            : 'bg-green-100 text-green-800 border border-green-200'
+                                                        }`}>
+                                                        {item.stock <= 0 ? 'OUT' : `${(item.stock / (item.packSize || 1)).toFixed(1)} PKs`}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-400 font-medium">
+                                                        Val: {(((item.stock || 0) / (item.packSize || 1)) * (item.costPrice || 0)).toLocaleString()}/-
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="text-sm font-medium text-gray-600">
-                                                    {(((item.stock || 0) / (item.packSize || 1)) * (item.costPrice || 0)).toLocaleString()}/-
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm font-medium text-gray-800">
-                                                {editingPrice.id === item._id ? (
-                                                    <div className="flex items-center gap-1">
-                                                        <input
-                                                            autoFocus
-                                                            type="number"
-                                                            className="w-20 px-2 py-1 border border-green-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                                                            value={editingPrice.value}
-                                                            onChange={(e) => setEditingPrice({ ...editingPrice, value: e.target.value })}
-                                                            onBlur={() => handlePriceEditSubmit(item)}
-                                                            onKeyDown={(e) => e.key === 'Enter' && handlePriceEditSubmit(item)}
-                                                        />
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] text-gray-400 w-8">Cost:</span>
+                                                        <span className="text-xs font-bold text-gray-600">{item.costPrice}/-</span>
                                                     </div>
-                                                ) : (
-                                                    <div
-                                                        className="cursor-pointer hover:text-green-600 hover:scale-105 transition-all flex items-center gap-1 group/price"
-                                                        onClick={() => setEditingPrice({ id: item._id, value: item.price })}
-                                                    >
-                                                        {item.price}/-
-                                                        <Edit size={10} className="opacity-0 group-hover/price:opacity-100 text-gray-400" />
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] text-gray-400 w-8">MRP:</span>
+                                                        <span className="text-xs font-bold text-orange-600">{item.mrp || 0}/-</span>
                                                     </div>
-                                                )}
+                                                    <div className="flex items-center gap-1.5 pt-0.5 border-t border-gray-50 mt-0.5">
+                                                        <span className="text-[10px] text-gray-400 w-8 uppercase font-black">Sale:</span>
+                                                        {editingPrice.id === item._id ? (
+                                                            <input
+                                                                autoFocus
+                                                                type="number"
+                                                                className="w-16 px-1 py-0.5 border border-green-300 rounded text-[11px] focus:outline-none"
+                                                                value={editingPrice.value}
+                                                                onChange={(e) => setEditingPrice({ ...editingPrice, value: e.target.value })}
+                                                                onBlur={() => handlePriceEditSubmit(item)}
+                                                                onKeyDown={(e) => e.key === 'Enter' && handlePriceEditSubmit(item)}
+                                                            />
+                                                        ) : (
+                                                            <div
+                                                                className="text-xs font-black text-green-700 cursor-pointer hover:underline"
+                                                                onClick={() => setEditingPrice({ id: item._id, value: item.price })}
+                                                            >
+                                                                {item.price}/-
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="text-sm font-bold text-green-600">{(item.price / (item.packSize || 1)).toFixed(2)}/-</span>
+                                                {(() => {
+                                                    const margin = ((item.price - item.costPrice) / item.price * 100);
+                                                    return (
+                                                        <div className="flex flex-col">
+                                                            <span className={`text-xs font-black ${margin < 10 ? 'text-red-600' : 'text-green-600'}`}>
+                                                                {margin.toFixed(1)}%
+                                                            </span>
+                                                            {item.discountPercentage > 0 && (
+                                                                <span className="text-[9px] text-orange-500 font-bold">-{item.discountPercentage}% Disc</span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-bold border ${item.status === 'Inactive'
+                                                <span className={`px-2 py-1 rounded-lg text-[10px] font-black border tracking-wider uppercase ${item.status === 'Inactive'
                                                     ? 'bg-gray-100 text-gray-500 border-gray-200'
                                                     : 'bg-green-50 text-green-600 border-green-200'
                                                     }`}>
                                                     {item.status || 'Active'}
                                                 </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-xs text-gray-500">
-                                                {item.lastUpdated ? new Date(item.lastUpdated).toLocaleDateString() : '-'}
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
