@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, ChevronDown } from 'lucide-react';
 
 const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, onUpdateIsUnit, onUpdateCustomPrice, onRemove }) => {
     // Initialize with prop value converted to string, empty if 1
@@ -67,6 +67,28 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
         if (e.key === 'Enter') {
             e.target.blur();
         }
+
+        // Arrow Navigation for Inputs
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const currentInput = e.target;
+            const currentTd = currentInput.closest('td');
+            const currentTr = currentInput.closest('tr');
+            const cellIndex = Array.from(currentTr.children).indexOf(currentTd);
+
+            const targetTr = e.key === 'ArrowUp'
+                ? currentTr.previousElementSibling
+                : currentTr.nextElementSibling;
+
+            if (targetTr) {
+                const targetTd = targetTr.children[cellIndex];
+                const targetInput = targetTd?.querySelector('input');
+                if (targetInput) {
+                    targetInput.focus();
+                    targetInput.select();
+                }
+            }
+        }
     };
 
     const packSize = parseInt(item.packSize) || 1;
@@ -93,20 +115,21 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateSaleType, onUpdateDiscount, 
                     onChange={handleQuantityChange}
                     onBlur={handleQuantityBlur}
                     onKeyDown={handleKeyDown}
-                    className="w-16 h-8 text-center border-2 border-blue-300 rounded-lg px-1 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="cart-quantity-input w-16 h-8 text-center border-2 border-blue-300 rounded-lg px-1 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
             </td>
             <td className="py-3 px-1">
-                <select
-                    value={item.saleType || 'Single'}
-                    onChange={(e) => onUpdateSaleType(item._id || item.id, e.target.value)}
-                    className="w-24 h-8 text-sm border border-gray-300 rounded-lg px-1 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
-                >
-                    <option value="Single">Single</option>
-                    <option value="Multiple">Multiple</option>
-                    <option value="Box">Box</option>
-                    <option value="Pack">Pack</option>
-                </select>
+                <div className="relative">
+                    <select
+                        value={item.saleType || 'Single'}
+                        onChange={(e) => onUpdateSaleType(item._id || item.id, e.target.value)}
+                        className="w-full h-9 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg pl-3 pr-8 shadow-sm appearance-none focus:outline-none focus:border-[#00c950] focus:ring-1 focus:ring-[#00c950] hover:border-[#00c950] transition-colors cursor-pointer"
+                    >
+                        <option value="Single">Single</option>
+                        <option value="Pack">Pack</option>
+                    </select>
+                    <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                </div>
             </td>
             <td className="py-3 px-1">
                 <input

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { Search, Plus, UserRound, X, Calendar } from 'lucide-react';
@@ -106,23 +106,25 @@ const Home = () => {
         }
     };
 
-    const filteredMedicines = medicines.filter(med => {
-        const matchesCategory = activeCategory === 'All' || med.category === activeCategory;
-        const matchesSearch = med.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesFormula = formulaSearch === '' ||
-            (med.formulaCode && med.formulaCode.toLowerCase().includes(formulaSearch.toLowerCase())) ||
-            (med.genericName && med.genericName.toLowerCase().includes(formulaSearch.toLowerCase())) ||
-            (med.id && med.id.toString().includes(formulaSearch));
-        const inInventory = med.inInventory === true;
+    const filteredMedicines = useMemo(() => {
+        return medicines.filter(med => {
+            const matchesCategory = activeCategory === 'All' || med.category === activeCategory;
+            const matchesSearch = med.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesFormula = formulaSearch === '' ||
+                (med.formulaCode && med.formulaCode.toLowerCase().includes(formulaSearch.toLowerCase())) ||
+                (med.genericName && med.genericName.toLowerCase().includes(formulaSearch.toLowerCase())) ||
+                (med.id && med.id.toString().includes(formulaSearch));
+            const inInventory = med.inInventory === true;
 
-        // Check if this medicine has a corresponding Supply record
-        const hasSupplyRecord = supplies.some(supply =>
-            (supply.medicineId && med.id && supply.medicineId.toString() === med.id.toString()) ||
-            (supply.medicineId && med._id && supply.medicineId.toString() === med._id.toString())
-        );
+            // Check if this medicine has a corresponding Supply record
+            const hasSupplyRecord = supplies.some(supply =>
+                (supply.medicineId && med.id && supply.medicineId.toString() === med.id.toString()) ||
+                (supply.medicineId && med._id && supply.medicineId.toString() === med._id.toString())
+            );
 
-        return matchesCategory && matchesSearch && matchesFormula && inInventory && hasSupplyRecord;
-    });
+            return matchesCategory && matchesSearch && matchesFormula && inInventory && hasSupplyRecord;
+        });
+    }, [medicines, activeCategory, searchQuery, formulaSearch, supplies]);
 
 
 
@@ -221,6 +223,119 @@ const Home = () => {
     useEffect(() => {
         fetchActiveVoucher();
     }, []);
+
+    const [selectedProductIndex, setSelectedProductIndex] = useState(0);
+    const searchInputRef = React.useRef(null);
+    const formulaSearchRef = React.useRef(null);
+
+    // Reset selection when search results change
+    useEffect(() => {
+        setSelectedProductIndex(0);
+    }, [searchQuery, formulaSearch, activeCategory, filteredMedicines]);
+
+    // Scroll active item into view
+    useEffect(() => {
+        if (filteredMedicines.length > 0) {
+            const element = document.getElementById(`product-row-${selectedProductIndex}`);
+            if (element) {
+                element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+    }, [selectedProductIndex, filteredMedicines]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // F2 - Focus Product Search
+            if (e.key === 'F2') {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            }
+            // F4 - Open Customer Modal
+            if (e.key === 'F4') {
+                e.preventDefault();
+                setIsAttachCustomerModalOpen(true);
+            }
+            // F6 - Focus Cart (First Quantity Input)
+            if (e.key === 'F6') {
+                e.preventDefault();
+                const firstCartInput = document.querySelector('.cart-quantity-input');
+                if (firstCartInput) {
+                    firstCartInput.focus();
+                    firstCartInput.select();
+                } else {
+                    showToast('Cart is empty', 'error');
+                }
+            }
+            // F9 - Checkout / Pay (Matches Cart Pay Button)
+            if (e.key === 'F9') {
+                e.preventDefault();
+                // Validations
+                if (cartItems.length === 0) {
+                    showToast('Cart is empty', 'error');
+                    return;
+                }
+                if (!selectedCustomer && (!customerInfo.name || !customerInfo.phone)) {
+                    showToast('Please select a customer or enter name and mobile', 'error');
+                    return;
+                }
+                const newTxId = `#TX${Date.now()}`;
+                setCurrentTransactionId(newTxId);
+                setIsBillModalOpen(true);
+            }
+            // F8 - Focus Formula Search
+            if (e.key === 'F8') {
+                e.preventDefault();
+                formulaSearchRef.current?.focus();
+            }
+            // Escape - Clear Search
+            if (e.key === 'Escape') {
+                // If modals are open, do nothing (let them handle close)
+                if (isBillModalOpen || isAttachCustomerModalOpen || isSuccessModalOpen) return;
+
+                e.preventDefault();
+                setSearchQuery('');
+                setFormulaSearch('');
+                setSelectedProductIndex(0);
+                searchInputRef.current?.focus();
+            }
+
+            // Arrow Navigation for Product List (Only if not in Cart or Modals)
+            const isCartFocus = document.activeElement?.classList.contains('cart-quantity-input') ||
+                document.activeElement?.closest('.cart-container');
+
+            if (!isCartFocus && !isBillModalOpen && !isAttachCustomerModalOpen && !isSuccessModalOpen) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setSelectedProductIndex(prev => Math.min(prev + 1, filteredMedicines.length - 1));
+                }
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setSelectedProductIndex(prev => Math.max(prev - 1, 0));
+                }
+                if (e.key === 'Enter') {
+                    // Start checkout if list is empty? No, traditionally Enter in search means select or search.
+                    // If focusing input, Enter adds selected item
+                    // Only intercept if we have a selection and we aren't submitting a form (though here we have no form)
+                    if (filteredMedicines.length > 0 && selectedProductIndex >= 0 && selectedProductIndex < filteredMedicines.length) {
+                        e.preventDefault();
+                        const product = filteredMedicines[selectedProductIndex];
+                        if (product.stock > 0) {
+                            addToCart(product);
+                            setSearchQuery('');
+                            setFormulaSearch('');
+                            setSelectedProductIndex(0);
+                            searchInputRef.current?.focus();
+                        } else {
+                            showToast('Product out of stock', 'error');
+                        }
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [cartItems, selectedCustomer, customerInfo, isBillModalOpen, isAttachCustomerModalOpen, isSuccessModalOpen, showToast, filteredMedicines, selectedProductIndex]);
 
     // ... existing useEffects ...
 
@@ -397,7 +512,7 @@ const Home = () => {
                         className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow text-gray-700 hover:border-[#00c950]/50 hover:bg-green-50/10 transition-all duration-200 text-xs font-semibold"
                     >
                         <UserRound size={14} color="#00c950" strokeWidth={2} />
-                        <span>{selectedCustomer ? selectedCustomer.name : 'Select Existing'}</span>
+                        <span>{selectedCustomer ? selectedCustomer.name : 'Select Existing (F4)'}</span>
                     </button>
                 </div>
                 <div className="grid grid-cols-5 gap-4">
@@ -466,11 +581,15 @@ const Home = () => {
                     <div className="flex-1 min-h-0 flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                         {/* Product Search Section */}
                         <div className="p-6 pb-2">
-                            <h3 className="font-bold text-gray-800 mb-3">Product Search</h3>
+                            <h3 className="font-bold text-gray-800 mb-3 flex items-center justify-between">
+                                <span>Product Search</span>
+                                <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">F2 to Search</span>
+                            </h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="relative">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                                     <input
+                                        ref={searchInputRef}
                                         type="text"
                                         placeholder="Enter Name"
                                         value={searchQuery}
@@ -481,8 +600,9 @@ const Home = () => {
                                 <div className="relative">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                                     <input
+                                        ref={formulaSearchRef}
                                         type="text"
-                                        placeholder="Enter Formula/Code"
+                                        placeholder="Enter Formula/Code (F8)"
                                         value={formulaSearch}
                                         onChange={(e) => setFormulaSearch(e.target.value)}
                                         className="pl-12 pr-6 py-3 border-transparent rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 bg-gray-100 placeholder-gray-500"
@@ -504,18 +624,26 @@ const Home = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredMedicines.map(product => {
+                                    {filteredMedicines.map((product, index) => {
                                         const isOutOfStock = product.stock <= 0;
                                         // Using Custom Green Theme Color
                                         const themeColor = 'bg-[#00c950]';
+                                        const isSelected = index === selectedProductIndex;
 
                                         return (
                                             <tr
                                                 key={product._id || product.id}
+                                                id={`product-row-${index}`}
                                                 onClick={() => !isOutOfStock && addToCart(product)}
-                                                className={`hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                className={`transition-all border-b border-gray-50 last:border-0 
+                                                    ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                                                    ${isSelected ? 'bg-[#00c950]/10 border-[#00c950]/30' : 'hover:bg-gray-50'}
+                                                `}
                                             >
-                                                <td className="py-4 px-4 text-sm text-gray-700 font-medium">
+                                                <td className="py-4 px-4 text-sm text-gray-700 font-medium relative">
+                                                    {isSelected && (
+                                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00c950] rounded-r"></div>
+                                                    )}
                                                     {product.name}
                                                 </td>
                                                 <td className="py-4 px-4 text-sm text-gray-600">
