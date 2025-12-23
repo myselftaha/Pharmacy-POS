@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
-import { Search, Plus, UserRound, X, Calendar } from 'lucide-react';
+import { Search, Plus, UserRound, X, Calendar, ScanBarcode } from 'lucide-react';
 import CategoryFilter from '../components/pos/CategoryFilter';
 
 import Cart from '../components/pos/Cart';
@@ -365,124 +365,129 @@ const Home = () => {
             return;
         }
 
-        // Always print the bill, regardless of backend save status
+        // Always print the bill based on strict policy
+        // (Comment about "regardless of backend" is now obsolete, we enforce backend save)
+
+        // Use existing ID or generate new if missing (fallback)
+        const transactionId = currentTransactionId || `#TX${Date.now()}`;
+
+        // Prepare transaction data with clean item objects
+        const transactionData = {
+            transactionId,
+            type: 'Sale', // Explicitly mark as Sale
+            customer: {
+                id: selectedCustomer?._id || null,
+                name: customerInfo.name || selectedCustomer?.name || 'Walk-in',
+                email: customerInfo.email || selectedCustomer?.email || '',
+                phone: customerInfo.phone || selectedCustomer?.phone || '',
+                doctorName: customerInfo.doctorName,
+                billDate: customerInfo.billDate
+            },
+            items: cartItems.map(item => {
+                const packSize = parseInt(item.packSize) || 1;
+                const isPack = (item.saleType || 'Single') === 'Pack';
+                const basePrice = item.customPrice || parseFloat(item.price);
+                const effectivePrice = isPack ? basePrice : (basePrice / packSize);
+
+                const itemSubtotal = effectivePrice * (parseInt(item.quantity) || 1);
+                const itemTotal = itemSubtotal - (parseFloat(item.discount) || 0);
+
+                return {
+                    id: item.id,
+                    name: item.name,
+                    price: effectivePrice,
+                    quantity: parseInt(item.quantity) || 1,
+                    saleType: item.saleType || 'Single',
+                    discount: parseFloat(item.discount) || 0,
+                    isUnit: item.isUnit || false,
+                    subtotal: itemTotal
+                };
+            }),
+            subtotal,
+            platformFee,
+            discount: discountAmount,
+            total: cartTotal,
+            voucher: selectedVoucher ? {
+                id: selectedVoucher._id,
+                code: selectedVoucher.code,
+                discountType: selectedVoucher.discountType,
+                discountValue: selectedVoucher.discountValue
+            } : null,
+            paymentMethod: paymentMethod,
+            processedBy: 'Admin'
+        };
+
+        // Save transaction to backend strictly
         try {
-            // Use existing ID or generate new if missing (fallback)
-            const transactionId = currentTransactionId || `#TX${Date.now()}`;
+            // Create completely clean object without prototype chain
+            const cleanTransactionData = JSON.parse(JSON.stringify(transactionData));
 
-            // Prepare transaction data with clean item objects
-            const transactionData = {
-                transactionId,
-                type: 'Sale', // Explicitly mark as Sale
-                customer: {
-                    id: selectedCustomer?._id || null,
-                    name: customerInfo.name || selectedCustomer?.name || 'Walk-in',
-                    email: customerInfo.email || selectedCustomer?.email || '',
-                    phone: customerInfo.phone || selectedCustomer?.phone || '',
-                    doctorName: customerInfo.doctorName,
-                    billDate: customerInfo.billDate
-                },
-                items: cartItems.map(item => {
-                    const effectivePrice = item.customPrice || parseFloat(item.price);
-                    const itemSubtotal = effectivePrice * (parseInt(item.quantity) || 1);
-                    const itemTotal = itemSubtotal - (parseFloat(item.discount) || 0);
-                    return {
-                        id: item.id,
-                        name: item.name,
-                        price: effectivePrice,
-                        quantity: parseInt(item.quantity) || 1,
-                        saleType: item.saleType || 'Single',
-                        discount: parseFloat(item.discount) || 0,
-                        isUnit: item.isUnit || false,
-                        subtotal: itemTotal
-                    };
-                }),
-                subtotal,
-                platformFee,
-                discount: discountAmount,
-                total: cartTotal,
-                voucher: selectedVoucher ? {
-                    id: selectedVoucher._id,
-                    code: selectedVoucher.code,
-                    discountType: selectedVoucher.discountType,
-                    discountValue: selectedVoucher.discountValue
-                } : null,
-                paymentMethod: paymentMethod,
-                processedBy: 'Admin'
-            };
-
-            // Try to save transaction to backend (but don't block on failure)
-            try {
-                // Create completely clean object without prototype chain
-                const cleanTransactionData = JSON.parse(JSON.stringify(transactionData));
-
-                console.log('Attempting to save transaction...', cleanTransactionData);
-                const response = await fetch(`${API_URL}/api/transactions`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(cleanTransactionData)
-                });
-
-                console.log('Response status:', response.status);
-                const responseData = await response.json();
-                console.log('Response data:', responseData);
-
-                if (response.ok) {
-                    console.log('✅ Transaction saved successfully to database!');
-                    showToast('Transaction saved successfully!', 'success');
-
-                    // Capture bill number from response
-                    if (responseData && responseData.billNumber) {
-                        setCurrentBillNumber(responseData.billNumber);
-                        // Brief delay to allow state to update the DOM for printing
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                    }
-
-                    // Refresh medicines to show updated stock
-                    fetchMedicines();
-                } else {
-                    console.warn('❌ Failed to save transaction:', responseData);
-                    showToast('Warning: Transaction may not have saved', 'warning');
-                }
-            } catch (error) {
-                // Backend is not available, continue with print anyway
-                console.error('❌ Backend not available, printing without saving:', error);
-                showToast('Offline mode: Transaction not saved', 'warning');
-            }
-
-            // Always proceed with printing
-            window.print();
-
-            // Show success and clear state
-            setIsBillModalOpen(false);
-            setIsSuccessModalOpen(true);
-            setCartItems([]);
-            setSelectedCustomer(null);
-            setCustomerInfo({
-                name: '',
-                phone: '',
-                email: '',
-                doctorName: '',
-                billDate: new Date().toISOString().split('T')[0]
+            console.log('Attempting to save transaction...', cleanTransactionData);
+            const response = await fetch(`${API_URL}/api/transactions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cleanTransactionData)
             });
-            setCurrentTransactionId(''); // Clear ID
-            setCurrentBillNumber(null); // Clear Bill #
-            // Keep voucher selected for next transaction
 
+            console.log('Response status:', response.status);
+            const responseData = await response.json();
+            console.log('Response data:', responseData);
+
+            if (response.ok) {
+                console.log('✅ Transaction saved successfully to database!');
+                showToast('Transaction saved successfully!', 'success');
+
+                // Capture bill number from response
+                if (responseData && responseData.billNumber) {
+                    setCurrentBillNumber(responseData.billNumber);
+                    // Brief delay to allow state to update the DOM for printing
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                // Proceed with printing ONLY after successful save
+                window.print();
+
+                // Show success and clear state
+                setIsBillModalOpen(false);
+                setIsSuccessModalOpen(true);
+                setCartItems([]);
+                setSelectedCustomer(null);
+                setCustomerInfo({
+                    name: '',
+                    phone: '',
+                    email: '',
+                    doctorName: '',
+                    billDate: new Date().toISOString().split('T')[0]
+                });
+                setCurrentTransactionId(''); // Clear ID
+                setCurrentBillNumber(null); // Clear Bill #
+
+                // Refresh medicines (search) to show updated stock if possible
+                // In current search-based design, we might clear or re-search?
+                // Re-searching current query keeps user context
+                if (searchQuery || formulaSearch) {
+                    searchMedicines(searchQuery, formulaSearch, activeCategory);
+                }
+
+            } else {
+                console.error('❌ Failed to save transaction:', responseData);
+                showToast(responseData.message || 'Failed to save transaction. Please check internet/server.', 'error');
+                // Do NOT print or clear cart if save failed
+            }
         } catch (error) {
-            console.error('Error during print process:', error);
-            // Still try to print even if there's an error
-            window.print();
-            setIsBillModalOpen(false);
-            setCartItems([]);
-            setSelectedCustomer(null);
-            setCurrentTransactionId('');
+            console.error('❌ Network/Server Error:', error);
+            showToast('Network error: Could not save transaction to database.', 'error');
+            // Do NOT print or clear cart
         }
     };
 
     // Calculate subtotal with custom prices and item-level discounts
     const subtotal = cartItems.reduce((sum, item) => {
-        const effectivePrice = item.customPrice || item.price;
+        const packSize = parseInt(item.packSize) || 1;
+        const isPack = (item.saleType || 'Single') === 'Pack';
+        const basePrice = item.customPrice || item.price;
+        const effectivePrice = isPack ? basePrice : (basePrice / packSize);
+
         const itemSubtotal = effectivePrice * item.quantity;
         const itemTotal = itemSubtotal - (item.discount || 0);
         return sum + itemTotal;
@@ -683,8 +688,41 @@ const Home = () => {
                                 </tbody>
                             </table>
                             {!loading && filteredMedicines.length === 0 && (
-                                <div className="text-center py-12 text-gray-500">
-                                    No products found
+                                <div className="flex flex-col items-center justify-center py-12 px-4 text-center h-[400px]">
+                                    {searchQuery || formulaSearch ? (
+                                        // No results found case
+                                        <>
+                                            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                                                <Search size={32} className="text-red-400" />
+                                            </div>
+                                            <h3 className="text-lg font-bold text-gray-800 mb-1">No products found</h3>
+                                            <p className="text-sm text-gray-500">
+                                                We couldn't find anything matching "<span className="font-medium text-gray-700">{searchQuery || formulaSearch}</span>"
+                                            </p>
+                                            <p className="text-xs text-gray-400 mt-2">Try checking for typos or searching by formula code</p>
+                                        </>
+                                    ) : (
+                                        // Initial / Empty state
+                                        <>
+                                            <div className="w-24 h-24 bg-gradient-to-br from-[#00c950]/20 to-[#00c950]/5 rounded-3xl flex items-center justify-center mb-6 shadow-sm ring-4 ring-white">
+                                                <ScanBarcode size={48} className="text-[#00c950] opacity-90" strokeWidth={1.5} />
+                                            </div>
+                                            <h3 className="text-2xl font-bold text-gray-800 mb-2">Ready for Sale</h3>
+                                            <p className="text-gray-500 max-w-sm mx-auto mb-8 leading-relaxed">
+                                                Search for products by name or scan a barcode to add them to the cart effectively.
+                                            </p>
+                                            <div className="flex gap-4 justify-center">
+                                                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
+                                                    <div className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm text-xs font-bold text-gray-500">F2</div>
+                                                    <span className="text-xs font-semibold text-gray-600">Product Search</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
+                                                    <div className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm text-xs font-bold text-gray-500">F8</div>
+                                                    <span className="text-xs font-semibold text-gray-600">Code Search</span>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>

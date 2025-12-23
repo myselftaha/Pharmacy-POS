@@ -6,7 +6,9 @@ import TransactionTable from '../components/history/TransactionTable';
 import TransactionDetailsModal from '../components/history/TransactionDetailsModal';
 import SummaryBar from '../components/history/SummaryBar';
 import FilterBar from '../components/history/FilterBar';
+import VoidModal from '../components/history/VoidModal';
 import ZReport from '../components/history/ZReport';
+import BillModal from '../components/pos/BillModal';
 import { useNavigate } from 'react-router-dom';
 import API_URL from '../config/api';
 
@@ -38,6 +40,10 @@ const History = () => {
     // Modal State
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [isVoidModalOpen, setIsVoidModalOpen] = useState(false);
+    const [transactionToVoid, setTransactionToVoid] = useState(null);
+    const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+    const [transactionToPrint, setTransactionToPrint] = useState(null);
 
     // Fetch Transactions
     const fetchTransactions = async (page = 1) => {
@@ -222,11 +228,12 @@ const History = () => {
         // Ideally, navigate to a dedicated clean print route or open a modal with structured Z-report data
     };
 
-    const handleVoid = async (transaction) => {
-        // Simple prompt for now - ideally a nicer modal
-        const reason = prompt("Enter reason for voiding this transaction:");
-        if (!reason) return;
+    const handleVoid = (transaction) => {
+        setTransactionToVoid(transaction);
+        setIsVoidModalOpen(true);
+    };
 
+    const handleConfirmVoid = async (transaction, reason) => {
         try {
             const response = await fetch(`${API_URL}/api/transactions/${transaction._id}/void`, {
                 method: 'POST',
@@ -243,18 +250,27 @@ const History = () => {
             fetchTransactions(pagination.page); // Refresh
         } catch (error) {
             showToast(error.message, 'error');
+            throw error; // Re-throw to let modal handle UI state
         }
     };
 
     const handleReturn = (transaction) => {
-
-        showToast(`Initiating return for ${transaction.transactionId}. (Feature: Navigate to POS Return Mode)`, 'info');
-        // navigate('/pos', { state: { returnTransaction: transaction } }); // If POS supports this
+        navigate('/return', { state: { returnTransaction: transaction } });
     };
 
     const handleDuplicate = (transaction) => {
         // Add items to cart?
         showToast(`Duplicating order with ${transaction.items.length} items. (Feature: Add to Cart)`, 'info');
+    };
+
+    const handlePrint = (transaction) => {
+        setTransactionToPrint(transaction);
+        setIsPrintModalOpen(true);
+    };
+
+    const handleActualPrint = () => {
+        window.print();
+        setIsPrintModalOpen(false);
     };
 
     return (
@@ -373,6 +389,7 @@ const History = () => {
                     onVoid={handleVoid}
                     onReturn={handleReturn}
                     onDuplicate={handleDuplicate}
+                    onPrint={handlePrint}
                 />
 
                 {/* Pagination */}
@@ -404,6 +421,33 @@ const History = () => {
                 isOpen={isDetailsModalOpen}
                 onClose={() => setIsDetailsModalOpen(false)}
                 transaction={selectedTransaction}
+            />
+
+            <VoidModal
+                isOpen={isVoidModalOpen}
+                onClose={() => {
+                    setIsVoidModalOpen(false);
+                    setTransactionToVoid(null);
+                }}
+                onConfirm={handleConfirmVoid}
+                transaction={transactionToVoid}
+            />
+
+            <BillModal
+                isOpen={isPrintModalOpen}
+                onClose={() => {
+                    setIsPrintModalOpen(false);
+                    setTransactionToPrint(null);
+                }}
+                onPrint={handleActualPrint}
+                items={transactionToPrint?.items || []}
+                total={transactionToPrint?.total || 0}
+                discount={transactionToPrint?.discount || 0}
+                customer={transactionToPrint?.customer}
+                transactionId={transactionToPrint?.transactionId}
+                billNumber={transactionToPrint?.billNumber}
+                paymentMethod={transactionToPrint?.paymentMethod}
+                voucher={transactionToPrint?.voucher}
             />
 
             {/* Hidden Print Component */}

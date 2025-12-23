@@ -189,8 +189,13 @@ const Cart = ({
     voucher: selectedVoucher
 }) => {
     // Calculate subtotal using custom prices and item-level discounts
+    // Calculate subtotal using custom prices and item-level discounts
     const subtotal = items.reduce((sum, item) => {
-        const effectivePrice = item.customPrice || item.price;
+        const packSize = parseInt(item.packSize) || 1;
+        const isPack = (item.saleType || 'Single') === 'Pack';
+        const basePrice = item.customPrice || item.price;
+        const effectivePrice = isPack ? basePrice : (basePrice / packSize);
+
         const itemSubtotal = effectivePrice * item.quantity;
         const itemTotal = itemSubtotal - (item.discount || 0);
         return sum + itemTotal;

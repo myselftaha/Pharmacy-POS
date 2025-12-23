@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, Printer, Repeat, Ban, AlertTriangle, MoreVertical, Copy } from 'lucide-react';
 
-const TransactionTable = ({ transactions, onViewDetails, onVoid, onReturn, onDuplicate }) => {
+const TransactionTable = ({ transactions, onViewDetails, onVoid, onReturn, onDuplicate, onPrint }) => {
     const [actionOpenId, setActionOpenId] = useState(null);
 
     const toggleActionMenu = (id) => {
@@ -112,7 +112,7 @@ const TransactionTable = ({ transactions, onViewDetails, onVoid, onReturn, onDup
                                                         <Eye size={14} /> View Details
                                                     </button>
                                                     <button
-                                                        onClick={() => { /* Print logic */ setActionOpenId(null); }}
+                                                        onClick={() => { onPrint(tx); setActionOpenId(null); }}
                                                         className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                                                     >
                                                         <Printer size={14} /> Reprint Receipt

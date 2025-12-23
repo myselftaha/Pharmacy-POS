@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, User, Trash2, RotateCcw, Save, FileText, ArrowLeft, Calendar, AlertCircle, Printer, Eye, X, Package } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useLocation } from 'react-router-dom';
 import API_URL from '../config/api';
 
 
@@ -21,6 +22,7 @@ const Return = () => {
     const [supplies, setSupplies] = useState([]);
 
     const { showToast } = useToast();
+    const location = useLocation();
 
     useEffect(() => {
         fetchMedicines();
@@ -179,8 +181,11 @@ const Return = () => {
             // Handle both array response and object with data property
             const transactionsData = Array.isArray(result) ? result : (result.data || []);
 
-            // Filter only sales for returns (in case type filter didn't work)
-            const sales = transactionsData.filter(tx => !tx.type || tx.type === 'Sale');
+            // Filter only sales for returns (in case type filter didn't work) AND exclude Voided
+            const sales = transactionsData.filter(tx =>
+                (!tx.type || tx.type === 'Sale') &&
+                tx.status !== 'Voided'
+            );
             setTransactions(sales);
             setFilteredTransactions(sales);
         } catch (error) {
@@ -203,6 +208,15 @@ const Return = () => {
             setFilteredTransactions(filtered);
         }
     }, [invoiceSearchQuery, transactions, returnMode]);
+
+    // Handle navigation from History page
+    useEffect(() => {
+        if (location.state?.returnTransaction) {
+            setReturnMode('invoice');
+            setSelectedInvoice(location.state.returnTransaction);
+            // Optionally clear state to avoid stuck selection on refresh, but React Router handles this well usually
+        }
+    }, [location.state]);
 
     // Keyboard shortcuts for return cart
     useEffect(() => {
