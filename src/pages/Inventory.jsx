@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Filter, Edit, Clock, AlertTriangle, ChevronDown, Download, CheckSquare, Square, ArrowUpDown, Save, MoreHorizontal, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Plus, Filter, Edit, Clock, AlertTriangle, ChevronDown, Download, CheckSquare, Square, ArrowUpDown, Save, MoreHorizontal, Calendar, TrendingUp, Package, DollarSign, X, AlertCircle } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -7,17 +7,22 @@ import AddToInventoryModal from '../components/inventory/AddToInventoryModal';
 import EditInventoryModal from '../components/inventory/EditInventoryModal';
 import API_URL from '../config/api';
 
-// import { categories } from '../data/mockData'; // Removed unused import
+// ... (rest of imports)
 
 const Inventory = () => {
     const [medicines, setMedicines] = useState([]);
     const [supplies, setSupplies] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
-    // activeCategory removed
-    const [activeTab, setActiveTab] = useState('all'); // 'all', 'expires', 'lowstock'
+    const [activeTab, setActiveTab] = useState('all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
+
+    // Modal States for detailed views
+    const [showExpiresModal, setShowExpiresModal] = useState(false);
+    const [showLowStockModal, setShowLowStockModal] = useState(false);
+
+    // ... (rest of state)
 
     // New Features State
     const [selectedItems, setSelectedItems] = useState([]);
@@ -315,6 +320,62 @@ const Inventory = () => {
     const expiringItems = getFilteredMedicines(allExpiringItems);
     const lowStockItems = getFilteredMedicines(allLowStockItems);
 
+    // Dashboard Statistics Calculation
+    const inventoryStats = useMemo(() => {
+        let totalItems = 0;
+        let totalValue = 0;
+        let potentialProfit = 0;
+        let lowStockCount = 0;
+        const categoryStats = {};
+
+        inventoryItems.forEach(item => {
+            const packs = (item.stock || 0) / (item.packSize || 1);
+            const price = item.price || 0;
+            const cost = item.costPrice || 0;
+
+            const retailVal = packs * price;
+            const costVal = packs * cost;
+
+            totalItems++;
+            totalValue += retailVal;
+            potentialProfit += (retailVal - costVal);
+
+            if (packs <= (item.minStock || 10)) lowStockCount++;
+
+            if (!categoryStats[item.category]) {
+                categoryStats[item.category] = {
+                    name: item.category,
+                    units: 0,
+                    value: 0,
+                    count: 0
+                };
+            }
+            categoryStats[item.category].units += packs;
+            categoryStats[item.category].value += retailVal;
+            categoryStats[item.category].count += 1;
+        });
+
+        const categoryList = Object.values(categoryStats)
+            .sort((a, b) => b.value - a.value);
+
+        const topValueItems = [...inventoryItems]
+            .sort((a, b) => {
+                const valA = ((a.stock || 0) / (a.packSize || 1)) * (a.price || 0);
+                const valB = ((b.stock || 0) / (b.packSize || 1)) * (b.price || 0);
+                return valB - valA;
+            })
+            .slice(0, 5);
+
+        return {
+            totalItems,
+            totalValue,
+            potentialProfit,
+            lowStockCount,
+            categoryList,
+            topValueItems
+        };
+    }, [inventoryItems]);
+
     const getDisplayItems = () => {
         let items = [];
         switch (activeTab) {
@@ -365,464 +426,251 @@ const Inventory = () => {
     ];
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="p-8 bg-gray-50/50 min-h-full">
             {/* Header */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Inventory Management</h1>
-                    <p className="text-gray-500 text-sm mt-1">Manage your active stock and pricing</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Inventory Overview</h1>
+                    <p className="text-gray-500 text-sm mt-1">Manage stock levels, value, and expirations</p>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={handleExport}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-all shadow-sm"
                     >
-                        <Download size={18} />
-                        <span>Export</span>
+                        <Download size={16} />
+                        <span>Export Excel</span>
                     </button>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Scan Barcode or Search Product..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg w-72 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 shadow-sm transition-all"
-                        />
-                    </div>
-                    {activeTab === 'all' && (
-                        <button
-                            onClick={() => setIsAddModalOpen(true)}
-                            className="flex items-center gap-2 px-6 py-2 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 transition-colors shadow-lg shadow-green-500/20"
-                        >
-                            <Plus size={18} />
-                            <span>Add Product</span>
-                        </button>
-                    )}
                 </div>
             </div>
 
-            {/* Bulk Actions Toolbar */}
-            {selectedItems.length > 0 && (
-                <div className="mb-6 p-2 bg-green-50 border border-green-100 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center gap-3 px-2">
-                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-sm font-bold">
-                            {selectedItems.length} Selected
-                        </span>
-                        <div className="h-4 w-px bg-green-200 mx-2"></div>
-                        <span className="text-sm text-green-800 font-medium">Bulk Actions:</span>
-                    </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => handleBulkStatusUpdate('Active')}
-                            className="px-3 py-1.5 bg-white border border-green-200 text-green-700 text-sm font-medium rounded hover:bg-green-100 transition-colors"
-                        >
-                            Mark Active
-                        </button>
-                        <button
-                            onClick={() => handleBulkStatusUpdate('Inactive')}
-                            className="px-3 py-1.5 bg-white border border-green-200 text-green-700 text-sm font-medium rounded hover:bg-green-100 transition-colors"
-                        >
-                            Mark Inactive
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Tabs */}
-            <div className="flex gap-2 mb-6 border-b border-gray-200">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`px-6 py-3 font-semibold text-sm transition-all relative ${activeTab === tab.id
-                            ? 'text-green-600 border-b-2 border-green-600'
-                            : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                    >
-                        {tab.label}
-                        {tab.count > 0 && (
-                            <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === tab.id
-                                ? 'bg-green-100 text-green-600'
-                                : 'bg-gray-100 text-gray-600'
-                                }`}>
-                                {tab.count}
+            {/* Main Content - No fixed height/overflow here, letting page scroll */}
+            <div className="space-y-6">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Total Items */}
+                    <div className="bg-blue-50 rounded-xl p-5 border border-blue-100 flex flex-col justify-between h-28 relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <p className="text-blue-600/90 font-semibold text-sm mb-1">Total Items</p>
+                            <h3 className="text-2xl font-bold text-blue-700">{inventoryStats.totalItems.toLocaleString()}</h3>
+                        </div>
+                        <div className="mt-auto relative z-10">
+                            <span className="text-xs font-medium text-blue-700/80 bg-blue-100/50 px-2 py-0.5 rounded inline-block">
+                                {inventoryStats.totalItems} unique products
                             </span>
-                        )}
-                    </button>
-                ))}
-            </div>
-
-            {/* Advanced Filters */}
-            <div className="mb-6 flex flex-wrap items-center gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700">Category:</span>
-                    <div className="relative">
-                        <select
-                            value={advancedFilters.category}
-                            onChange={(e) => setAdvancedFilters(prev => ({ ...prev, category: e.target.value }))}
-                            className="appearance-none pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 cursor-pointer shadow-sm hover:border-gray-300 transition-colors"
-                        >
-                            <option value="All">All Categories</option>
-                            {[...new Set(inventoryItems.map(m => m.category).filter(Boolean))].sort().map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
-                            ))}
-                        </select>
-                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-                    </div>
-                </div>
-
-                {activeTab !== 'expires' && (
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-700">Status:</span>
-                        <div className="relative">
-                            <select
-                                value={advancedFilters.status}
-                                onChange={(e) => setAdvancedFilters(prev => ({ ...prev, status: e.target.value }))}
-                                className="appearance-none pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 cursor-pointer shadow-sm hover:border-gray-300 transition-colors"
-                            >
-                                <option value="All">All Status</option>
-                                <option value="Active">Active</option>
-                                <option value="Inactive">Inactive</option>
-                            </select>
-                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+                        </div>
+                        <div className="absolute right-3 top-3 bg-blue-100 rounded-lg p-1.5 text-blue-500 group-hover:scale-110 transition-transform">
+                            <Package size={18} />
                         </div>
                     </div>
-                )}
-            </div>
 
-            {/* Table Content */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex-1 overflow-hidden flex flex-col">
-                <div className="flex-1 overflow-auto">
-                    {activeTab === 'all' && (
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50 sticky top-0 z-10">
-                                <tr>
-                                    <th className="px-4 py-3 w-10">
-                                        <button onClick={toggleSelectAll} className="flex items-center justify-center text-gray-400 hover:text-green-600">
-                                            {selectedItems.length > 0 && selectedItems.length === displayItems.length ? <CheckSquare size={18} className="text-green-600" /> : <Square size={18} />}
-                                        </button>
-                                    </th>
-                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
-                                        <div className="flex items-center gap-1">Product {sortConfig.key === 'name' && <ArrowUpDown size={12} />}</div>
-                                    </th>
-                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:bg-gray-100" onClick={() => handleSort('location')}>
-                                        <div className="flex items-center gap-1">Location {sortConfig.key === 'location' && <ArrowUpDown size={12} />}</div>
-                                    </th>
-                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stock')}>
-                                        <div className="flex items-center gap-1">Stock {sortConfig.key === 'stock' && <ArrowUpDown size={12} />}</div>
-                                    </th>
-                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Pricing</th>
-                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:bg-gray-100" onClick={() => handleSort('margin')}>
-                                        <div className="flex items-center gap-1">Margin {sortConfig.key === 'margin' && <ArrowUpDown size={12} />}</div>
-                                    </th>
-                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {displayItems.length > 0 ? (
-                                    displayItems.map((item) => (
-                                        <tr key={item._id} className={`hover:bg-green-50/30 transition-colors group ${selectedItems.includes(item._id) ? 'bg-green-50/50' : ''}`}>
-                                            <td className="px-4 py-3">
-                                                <button onClick={() => toggleSelectItem(item._id)} className="flex items-center justify-center text-gray-400 hover:text-green-600">
-                                                    {selectedItems.includes(item._id) ? <CheckSquare size={18} className="text-green-600" /> : <Square size={18} />}
+                    {/* Inventory Value */}
+                    <div className="bg-emerald-50 rounded-xl p-5 border border-emerald-100 flex flex-col justify-between h-28 relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <p className="text-emerald-600/90 font-semibold text-sm mb-1">Inventory Value</p>
+                            <h3 className="text-2xl font-bold text-emerald-700">Rs {inventoryStats.totalValue.toLocaleString()}</h3>
+                        </div>
+                        <div className="mt-auto relative z-10">
+                            <span className="text-xs font-medium text-emerald-700/80 bg-emerald-100/50 px-2 py-0.5 rounded inline-block flex items-center w-fit gap-1">
+                                <TrendingUp size={12} />
+                                Retail Value
+                            </span>
+                        </div>
+                        <div className="absolute right-3 top-3 bg-emerald-100 rounded-lg p-1.5 text-emerald-500 group-hover:scale-110 transition-transform">
+                            <DollarSign size={18} />
+                        </div>
+                    </div>
+
+                    {/* Low Stock */}
+                    <div className="bg-red-50 rounded-xl p-5 border border-red-100 flex flex-col justify-between h-28 relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <p className="text-red-600/90 font-semibold text-sm mb-1">Low Stock</p>
+                            <h3 className="text-2xl font-bold text-red-700">{inventoryStats.lowStockCount}</h3>
+                        </div>
+                        <div className="mt-auto relative z-10">
+                            <span className="text-xs font-medium text-red-700/80 bg-red-100/50 px-2 py-0.5 rounded inline-block">
+                                {enrichedLowStockItems.filter(i => i.stock === 0).length} Out of Stock
+                            </span>
+                        </div>
+                        <div className="absolute right-3 top-3 bg-red-100 rounded-lg p-1.5 text-red-500 group-hover:scale-110 transition-transform">
+                            <AlertTriangle size={18} />
+                        </div>
+                    </div>
+
+                    {/* Profit */}
+                    <div className="bg-orange-50 rounded-xl p-5 border border-orange-100 flex flex-col justify-between h-28 relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <p className="text-orange-600/90 font-semibold text-sm mb-1">Potential Profit</p>
+                            <h3 className="text-2xl font-bold text-orange-700">Rs {inventoryStats.potentialProfit.toLocaleString()}</h3>
+                        </div>
+                        <div className="mt-auto relative z-10">
+                            <span className="text-xs font-medium text-orange-700/80 bg-orange-100/50 px-2 py-0.5 rounded inline-block">
+                                Expected Margin
+                            </span>
+                        </div>
+                        <div className="absolute right-3 top-3 bg-orange-100 rounded-lg p-1.5 text-orange-500 group-hover:scale-110 transition-transform">
+                            <TrendingUp size={18} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Secondary Metrics Row - Clean White Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Expiring Soon */}
+                    <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between h-24">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500">
+                                <Clock size={20} />
+                            </div>
+                            <div>
+                                <p className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Expiring Soon (90 Days)</p>
+                                <div className="flex items-end gap-2 mt-0.5">
+                                    <h3 className="text-xl font-bold text-gray-900 leading-none">{expiringItems.filter(i => new Date(i.expiryDate) >= new Date()).length}</h3>
+                                    <span className="text-xs font-medium text-gray-400 mb-0.5">Items</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowExpiresModal(true)}
+                            className="px-4 py-2 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors uppercase tracking-wide"
+                        >
+                            View List
+                        </button>
+                    </div>
+
+                    {/* Expired Items */}
+                    <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between h-24">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                                <AlertCircle size={20} />
+                            </div>
+                            <div>
+                                <p className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Expired Items</p>
+                                <div className="flex items-end gap-2 mt-0.5">
+                                    <h3 className="text-xl font-bold text-gray-900 leading-none">{expiringItems.filter(i => new Date(i.expiryDate) < new Date()).length}</h3>
+                                    <span className="text-xs font-medium text-gray-400 mb-0.5">Items</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowExpiresModal(true)}
+                            className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors uppercase tracking-wide"
+                        >
+                            Process
+                        </button>
+                    </div>
+                </div>
+
+                {/* Charts & Lists Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* Stock by Category */}
+                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm lg:col-span-1">
+                        <h3 className="font-bold text-gray-900 text-sm mb-3">Stock by Category</h3>
+                        <div className="space-y-3">
+                            {inventoryStats.categoryList.slice(0, 5).map((cat, index) => (
+                                <div key={index} className="group">
+                                    <div className="flex justify-between text-[10px] mb-1">
+                                        <span className="font-semibold text-gray-700">{cat.name}</span>
+                                        <span className="text-gray-500 font-medium">{cat.units.toFixed(0)}</span>
+                                    </div>
+                                    <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full ${index === 0 ? 'bg-blue-500' :
+                                                index === 1 ? 'bg-indigo-500' :
+                                                    index === 2 ? 'bg-cyan-500' :
+                                                        index === 3 ? 'bg-teal-500' :
+                                                            'bg-gray-400'
+                                                }`}
+                                            style={{ width: `${Math.min((cat.value / inventoryStats.totalValue) * 100 * 3, 100)}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Low Stock Alerts */}
+                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm lg:col-span-2 flex flex-col">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="font-bold text-gray-900 text-sm">Low Stock Alerts</h3>
+                            <button
+                                onClick={() => setShowLowStockModal(true)}
+                                className="text-[9px] text-indigo-600 font-bold hover:text-indigo-700 uppercase tracking-wide"
+                            >
+                                View Detailed Analysis
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-50 text-[9px] uppercase text-gray-500 font-bold tracking-wider">
+                                    <tr>
+                                        <th className="px-3 py-1.5 rounded-l-lg">Product</th>
+                                        <th className="px-3 py-1.5">Category</th>
+                                        <th className="px-3 py-1.5">Stock</th>
+                                        <th className="px-3 py-1.5 text-right rounded-r-lg">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {enrichedLowStockItems.slice(0, 5).map(item => (
+                                        <tr key={item._id} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-3 py-1.5">
+                                                <p className="font-bold text-gray-800 text-[11px] leading-tight">{item.name}</p>
+                                                <p className="text-[9px] text-gray-400 font-medium mt-0">{item.supplier || 'N/A'}</p>
+                                            </td>
+                                            <td className="px-3 py-1.5 text-[10px] text-gray-600 font-medium">
+                                                {item.category}
+                                            </td>
+                                            <td className="px-3 py-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-10 h-1 bg-gray-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full ${item.stock === 0 ? 'bg-red-500' : 'bg-yellow-500'}`}
+                                                            style={{ width: `${Math.min(((item.stock / (item.packSize || 1)) / (item.minStock || 10)) * 100, 100)}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className={`text-[10px] font-bold ${item.stock === 0 ? 'text-red-500' : 'text-yellow-600'}`}>
+                                                        {(item.stock / (item.packSize || 1)).toFixed(0)}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-1.5 text-right">
+                                                <button className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded hover:bg-indigo-100 uppercase tracking-wide transition-colors">
+                                                    Order
                                                 </button>
                                             </td>
-                                            <td className="px-4 py-3">
-                                                <div className="font-bold text-gray-800 text-xs leading-tight">{item.name}</div>
-                                                <div className="text-[9px] font-black text-green-700 bg-green-50 px-1 py-0.5 rounded inline-block mt-0.5 uppercase">
-                                                    {item.genericName || item.formulaCode || 'N/A'}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[11px] font-bold text-gray-700">{item.boxNumber || '-'}</span>
-                                                    <span className="text-[10px] text-gray-400">{item.category}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex flex-col">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black ${item.stock <= 0
-                                                        ? 'bg-red-600 text-white'
-                                                        : (item.stock / (item.packSize || 1)) <= (item.minStock || 10)
-                                                            ? 'bg-orange-100 text-orange-800'
-                                                            : 'bg-green-100 text-green-800'
-                                                        }`}>
-                                                        {item.stock <= 0 ? 'OUT' : `${(item.stock / (item.packSize || 1)).toFixed(1)} PKs`}
-                                                    </span>
-                                                    <span className="text-[9px] text-gray-400 font-bold mt-0.5">
-                                                        Val: {(((item.stock || 0) / (item.packSize || 1)) * (item.costPrice || 0)).toLocaleString()}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex flex-col">
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-[9px] text-gray-400 font-bold uppercase">Sale:</span>
-                                                        <span className="text-[11px] font-black text-green-700">{item.price}/-</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-[9px] text-gray-400 font-bold uppercase">MRP:</span>
-                                                        <span className="text-[10px] font-bold text-orange-600">{item.mrp || 0}/-</span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex flex-col items-start">
-                                                    <span className={`text-[11px] font-black ${((item.price - item.costPrice) / item.price * 100) < 10 ? 'text-red-600' : 'text-green-600'}`}>
-                                                        {((item.price - item.costPrice) / item.price * 100).toFixed(1)}%
-                                                    </span>
-                                                    {item.discountPercentage > 0 && (
-                                                        <span className="text-[9px] text-orange-500 font-bold">-{item.discountPercentage}% Disc</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black border uppercase ${item.status === 'Inactive'
-                                                    ? 'bg-gray-100 text-gray-500 border-gray-200'
-                                                    : 'bg-green-50 text-green-600 border-green-200'
-                                                    }`}>
-                                                    {item.status || 'Active'}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedItem(item);
-                                                            setIsEditModalOpen(true);
-                                                        }}
-                                                        className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                                    >
-                                                        <Edit size={16} />
-                                                    </button>
-                                                </div>
-                                            </td>
                                         </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="10" className="px-6 py-12 text-center text-gray-400">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-300">
-                                                    <Filter size={32} />
-                                                </div>
-                                                <p className="font-medium">No items found</p>
-                                                <p className="text-sm">Try adjusting your filters</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    )}
-
-                    {activeTab === 'expires' && (
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50 sticky top-0 z-10">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Product</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Stock</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Expiry Date</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {displayItems.length > 0 ? (
-                                    displayItems.map((item) => {
-                                        const daysToExpiry = Math.ceil((new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
-                                        const isExpired = daysToExpiry < 0;
-
-                                        return (
-                                            <tr key={item._id} className="hover:bg-orange-50/50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="font-bold text-gray-800">{item.name}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
-                                                        {item.category}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="font-medium text-gray-700">{(item.stock / (item.packSize || 1)).toFixed(1)} Packs</span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="font-medium text-gray-800">
-                                                        {new Date(item.expiryDate).toLocaleDateString()}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                ) : (
-                                    <tr>
-                                        <td colSpan="5" className="px-6 py-12 text-center text-gray-400">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-300">
-                                                    <Clock size={32} />
-                                                </div>
-                                                <p className="font-medium">No expiring items found</p>
-                                                <p className="text-sm">All stock is fresh and within expiry limits.</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    )}
-
-                    {activeTab === 'lowstock' && (
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50 sticky top-0 z-10">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Product</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Stock Status</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Velocity</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reorder Info</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Supplier</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Forecast</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {displayItems.length > 0 ? (
-                                    displayItems.map((item) => {
-                                        const suggestion = item.reorderSuggestion || {};
-                                        const urgency = suggestion.urgency || 'Warning';
-                                        const urgencyColor = urgency === 'Critical' ? 'red' : 'orange';
-
-                                        return (
-                                            <tr
-                                                key={item._id}
-                                                className={`hover:bg-${urgencyColor}-50/30 transition-colors border-l-4 ${urgency === 'Critical' ? 'border-red-500' : 'border-orange-400'
-                                                    }`}
-                                            >
-                                                {/* Product Info */}
-                                                <td className="px-6 py-4">
-                                                    <div className="font-bold text-gray-800">{item.name}</div>
-                                                    <div className="text-xs text-gray-500 mt-1">{item.category}</div>
-                                                </td>
-
-                                                {/* Stock Status */}
-                                                <td className="px-6 py-4">
-                                                    <div className="space-y-1">
-                                                        <div className={`font-bold text-lg ${item.stock <= 0 ? 'text-red-600' :
-                                                            (item.stock / (item.packSize || 1)) <= (item.minStock || 10) ? 'text-red-500' :
-                                                                'text-orange-600'
-                                                            }`}>
-                                                            {(item.stock / (item.packSize || 1)).toFixed(1)} {item.unit || 'Packs'}
-                                                        </div>
-                                                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                            <span>Min: {item.minStock || 10}</span>
-                                                            <span>•</span>
-                                                            <span>Reorder: {item.reorderLevel || 20}</span>
-                                                        </div>
-                                                        {suggestion.estimatedDaysRemaining && (
-                                                            <div className={`text-xs font-medium ${suggestion.estimatedDaysRemaining <= 3 ? 'text-red-600' :
-                                                                suggestion.estimatedDaysRemaining <= 7 ? 'text-orange-600' :
-                                                                    'text-gray-600'
-                                                                }`}>
-                                                                ⏱ {suggestion.estimatedDaysRemaining} days remaining
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-
-                                                {/* Sales Velocity */}
-                                                <td className="px-6 py-4">
-                                                    <div className="space-y-1">
-                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${item.salesVelocity === 'Fast' ? 'bg-green-100 text-green-700' :
-                                                            item.salesVelocity === 'Slow' ? 'bg-gray-100 text-gray-600' :
-                                                                'bg-blue-100 text-blue-700'
-                                                            }`}>
-                                                            {item.salesVelocity || 'Normal'}
-                                                        </span>
-                                                        {item.averageDailySales > 0 && (
-                                                            <div className="text-xs text-gray-600 mt-1">
-                                                                {item.averageDailySales.toFixed(1)} units/day
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-
-                                                {/* Reorder Info */}
-                                                <td className="px-6 py-4">
-                                                    <div className="space-y-1">
-                                                        <div className={`text-sm font-bold ${urgency === 'Critical' ? 'text-red-600' : 'text-orange-600'
-                                                            }`}>
-                                                            Order: {suggestion.suggestedQuantity || 0} units
-                                                        </div>
-                                                        <div className="text-xs text-gray-600">
-                                                            Price: {item.lastPurchasePrice ? `${item.lastPurchasePrice}/-` : 'N/A'}
-                                                        </div>
-                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold ${urgency === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
-                                                            }`}>
-                                                            <AlertTriangle size={12} />
-                                                            {urgency}
-                                                        </span>
-                                                    </div>
-                                                </td>
-
-                                                {/* Supplier Info */}
-                                                <td className="px-6 py-4">
-                                                    <div className="space-y-1">
-                                                        {item.preferredSupplierId || item.supplier ? (
-                                                            <>
-                                                                <div className="font-medium text-sm text-gray-800">
-                                                                    {item.preferredSupplierId?.name || item.supplier || 'N/A'}
-                                                                </div>
-                                                                <div className="text-xs text-gray-500">
-                                                                    Lead: {item.leadTimeDays || 7} days
-                                                                </div>
-                                                            </>
-                                                        ) : (
-                                                            <span className="text-xs text-gray-400 italic">No supplier assigned</span>
-                                                        )}
-                                                    </div>
-                                                </td>
-
-                                                {/* Forecast */}
-                                                <td className="px-6 py-4">
-                                                    {item.forecasts && (
-                                                        <div className="space-y-1 text-xs">
-                                                            <div className={`${item.forecasts.days7?.willStockOut ? 'text-red-600 font-bold' : 'text-gray-600'
-                                                                }`}>
-                                                                7d: {item.forecasts.days7?.forecastedStock || 0} units
-                                                            </div>
-                                                            <div className={`${item.forecasts.days15?.willStockOut ? 'text-red-600 font-bold' : 'text-gray-600'
-                                                                }`}>
-                                                                15d: {item.forecasts.days15?.forecastedStock || 0} units
-                                                            </div>
-                                                            <div className={`${item.forecasts.days30?.willStockOut ? 'text-red-600 font-bold' : 'text-gray-600'
-                                                                }`}>
-                                                                30d: {item.forecasts.days30?.forecastedStock || 0} units
-                                                            </div>
-                                                            {(item.forecasts.days7?.willStockOut || item.forecasts.days15?.willStockOut) && (
-                                                                <div className="text-red-600 font-bold mt-1">⚠ Stock-out risk</div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                ) : (
-                                    <tr>
-                                        <td colSpan="6" className="px-6 py-12 text-center text-gray-400">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-300">
-                                                    <AlertTriangle size={32} />
-                                                </div>
-                                                <p className="font-medium">All stock levels are healthy. No low-stock items at the moment.</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    )}
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </div >
+
+                {/* Highest Value Items (Grid Style) */}
+                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm mt-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-gray-900 text-lg">Top Value Assets</h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                        {inventoryStats.topValueItems.map((item, index) => (
+                            <div key={item._id} className="p-4 rounded-xl border border-gray-100 bg-gray-50/30 flex flex-col gap-3 hover:border-indigo-100 hover:shadow-sm transition-all h-28 justify-between">
+                                <div className="flex justify-between items-start">
+                                    <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold ${index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-white text-gray-500 border border-gray-200'
+                                        }`}>
+                                        #{index + 1}
+                                    </div>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Rank</span>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-gray-900 text-sm truncate leading-tight" title={item.name}>{item.name}</h4>
+                                    <p className="text-xs text-gray-500 mt-1 font-medium">Rs {(((item.stock || 0) / (item.packSize || 1)) * (item.price || 0)).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
 
             <AddToInventoryModal
                 isOpen={isAddModalOpen}
@@ -837,7 +685,195 @@ const Inventory = () => {
                 onConfirm={handleUpdateInventory}
                 product={selectedItem}
             />
-        </div >
+
+            {/* Expiring Items Modal */}
+            {showExpiresModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">Expiring Items Report</h2>
+                                <p className="text-sm text-gray-500 mt-1">Items expired or expiring within 3 months</p>
+                            </div>
+                            <button onClick={() => setShowExpiresModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-4">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-50 sticky top-0 z-10">
+                                    <tr>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider rounded-l-lg">Product</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Stock</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider rounded-r-lg">Expiry Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {expiringItems.length > 0 ? (
+                                        expiringItems.map((item) => {
+                                            const daysToExpiry = Math.ceil((new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+                                            const isExpired = daysToExpiry < 0;
+
+                                            return (
+                                                <tr key={item._id} className="hover:bg-gray-50 transition-colors group">
+                                                    <td className="px-4 py-2.5">
+                                                        <div className="font-bold text-gray-800 text-xs">{item.name}</div>
+                                                        <div className="text-[10px] text-gray-400 group-hover:text-gray-500">{item.genericName}</div>
+                                                    </td>
+                                                    <td className="px-4 py-2.5">
+                                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold">
+                                                            {item.category}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-2.5">
+                                                        <span className="font-medium text-gray-700 text-xs">{(item.stock / (item.packSize || 1)).toFixed(1)} Packs</span>
+                                                    </td>
+                                                    <td className="px-4 py-2.5">
+                                                        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border ${isExpired ? 'bg-red-50 border-red-100 text-red-700' : 'bg-orange-50 border-orange-100 text-orange-700'
+                                                            }`}>
+                                                            <Clock size={12} />
+                                                            <span className="font-bold text-[10px]">
+                                                                {new Date(item.expiryDate).toLocaleDateString()}
+                                                            </span>
+                                                            <span className="text-[9px] uppercase font-bold opacity-75 border-l border-current pl-1.5 ml-1">
+                                                                {isExpired ? 'Expired' : `${daysToExpiry} Days`}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="4" className="px-4 py-10 text-center text-gray-400">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
+                                                        <CheckSquare size={24} />
+                                                    </div>
+                                                    <p className="font-medium text-sm">No expiring items found</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Low Stock Modal */}
+            {showLowStockModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl w-full max-w-6xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">Low Stock Alerts</h2>
+                                <p className="text-sm text-gray-500 mt-1">Detailed reorder analysis and forecasts</p>
+                            </div>
+                            <button onClick={() => setShowLowStockModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-4">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-50 sticky top-0 z-10">
+                                    <tr>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider rounded-l-lg">Product</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Sales Velocity</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Reorder Suggestion</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Supplier</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider rounded-r-lg">Forecast (7/15/30d)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {enrichedLowStockItems.length > 0 ? (
+                                        enrichedLowStockItems.map((item) => {
+                                            const suggestion = item.reorderSuggestion || {};
+                                            const urgency = suggestion.urgency || 'Warning';
+
+                                            return (
+                                                <tr key={item._id} className="hover:bg-gray-50 transition-colors group">
+                                                    <td className="px-4 py-2.5">
+                                                        <div className="font-bold text-gray-800 text-xs">{item.name}</div>
+                                                        <div className="text-[10px] text-gray-400 mt-0.5">{item.category}</div>
+                                                    </td>
+                                                    <td className="px-4 py-2.5">
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <div className={`font-bold text-xs ${item.stock === 0 ? 'text-red-600' : 'text-orange-600'}`}>
+                                                                {(item.stock / (item.packSize || 1)).toFixed(1)} {item.unit || 'Units'}
+                                                            </div>
+                                                            <div className="text-[9px] uppercase font-bold text-gray-400">
+                                                                Min: {item.minStock || 10}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-2.5">
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${item.salesVelocity === 'Fast' ? 'bg-green-50 text-green-700' :
+                                                            item.salesVelocity === 'Slow' ? 'bg-gray-50 text-gray-600' :
+                                                                'bg-blue-50 text-blue-700'
+                                                            }`}>
+                                                            {item.salesVelocity || 'Normal'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-2.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="bg-gray-100 px-2 py-1 rounded text-center min-w-[50px]">
+                                                                <div className="text-[9px] text-gray-400 font-bold uppercase">Order</div>
+                                                                <div className="font-bold text-gray-900 text-xs">{suggestion.suggestedQuantity || 0}</div>
+                                                            </div>
+                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${urgency === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                                                                }`}>
+                                                                {urgency}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-2.5">
+                                                        <div className="text-xs font-medium text-gray-700">
+                                                            {item.preferredSupplierId?.name || item.supplier || 'N/A'}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-2.5">
+                                                        {item.forecasts && (
+                                                            <div className="flex items-center gap-1.5 text-[10px]">
+                                                                <span className={`px-1 py-0.5 rounded ${item.forecasts.days7?.willStockOut ? 'bg-red-100 text-red-700 font-bold' : 'bg-gray-100 text-gray-500'}`}>
+                                                                    {item.forecasts.days7?.forecastedStock || 0}
+                                                                </span>
+                                                                <span className="text-gray-300">/</span>
+                                                                <span className={`px-1 py-0.5 rounded ${item.forecasts.days15?.willStockOut ? 'bg-red-100 text-red-700 font-bold' : 'bg-gray-100 text-gray-500'}`}>
+                                                                    {item.forecasts.days15?.forecastedStock || 0}
+                                                                </span>
+                                                                <span className="text-gray-300">/</span>
+                                                                <span className={`px-1 py-0.5 rounded ${item.forecasts.days30?.willStockOut ? 'bg-red-100 text-red-700 font-bold' : 'bg-gray-100 text-gray-500'}`}>
+                                                                    {item.forecasts.days30?.forecastedStock || 0}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="6" className="px-4 py-10 text-center text-gray-400">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
+                                                        <CheckSquare size={24} />
+                                                    </div>
+                                                    <p className="font-medium text-sm">Stock levels healthy</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
