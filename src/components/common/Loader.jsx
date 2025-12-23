@@ -1,54 +1,47 @@
 import React from 'react';
 
 const Loader = ({ size = 'md', message = '', fullscreen = false, type = 'spinner' }) => {
-  // Size classes
-  const sizeClasses = {
-    sm: 'w-6 h-6',
-    md: 'w-12 h-12',
-    lg: 'w-16 h-16',
-    xl: 'w-24 h-24'
+  // Size constraints
+  const dimensions = {
+    sm: { w: 'w-6', h: 'h-6', text: 'text-xs' },
+    md: { w: 'w-10', h: 'h-10', text: 'text-sm' },
+    lg: { w: 'w-16', h: 'h-16', text: 'text-base' },
+    xl: { w: 'w-24', h: 'h-24', text: 'text-lg' }
   };
 
-  const sizeTextClasses = {
-    sm: 'text-xs',
-    md: 'text-sm',
-    lg: 'text-base',
-    xl: 'text-lg'
-  };
+  const currentDim = dimensions[size] || dimensions.md;
 
-  // Pharmacy-themed pulse loader
-  const PulseLoader = () => (
-    <div className="flex space-x-2 justify-center items-center">
-      <div className={`rounded-full bg-green-500 ${sizeClasses[size]} animate-bounce`} style={{ animationDelay: '0ms' }}></div>
-      <div className={`rounded-full bg-green-500 ${sizeClasses[size]} animate-bounce`} style={{ animationDelay: '150ms' }}></div>
-      <div className={`rounded-full bg-green-500 ${sizeClasses[size]} animate-bounce`} style={{ animationDelay: '300ms' }}></div>
+  // Premium Spinner: sleek ring with fading tail
+  const SpinnerLoader = () => (
+    <div className={`relative ${currentDim.w} ${currentDim.h}`}>
+      <div className="absolute inset-0 rounded-full border-4 border-[#00c950]/20"></div>
+      <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#00c950] animate-spin"></div>
     </div>
   );
 
-  // Spinner loader
-  const SpinnerLoader = () => (
-    <div className={`${sizeClasses[size]} border-4 border-gray-200 border-t-green-500 rounded-full animate-spin`}></div>
-  );
-
-  // Pharmacy cross loader
-  const CrossLoader = () => (
-    <div className="relative">
-      <div className={`${sizeClasses[size]} border-4 border-green-500 rounded-lg animate-pulse flex items-center justify-center`}>
-        <div className="absolute w-1/2 h-1 bg-green-500 rotate-45"></div>
-        <div className="absolute w-1/2 h-1 bg-green-500 -rotate-45"></div>
+  // Pharmacy-Themed Pill Loader: A capsule spinning or floating
+  const PillLoader = () => (
+    <div className={`relative ${currentDim.w} ${currentDim.h} flex items-center justify-center animate-bounce-gentle`}>
+      <div className="relative w-full h-full animate-spin-slow">
+        {/* Capsule Half 1 */}
+        <div className="absolute top-0 left-0 w-full h-[50%] bg-[#00c950] rounded-t-full opacity-90"></div>
+        {/* Capsule Half 2 */}
+        <div className="absolute bottom-0 left-0 w-full h-[50%] bg-[#00c950]/30 rounded-b-full backdrop-blur-sm"></div>
+        {/* Reflection */}
+        <div className="absolute top-[10%] left-[20%] w-[20%] h-[30%] bg-white/40 rounded-full rotate-12"></div>
       </div>
     </div>
   );
 
-  // Wave loader
+  // Refined Wave Loader
   const WaveLoader = () => (
-    <div className="flex space-x-1">
+    <div className="flex items-center space-x-1 h-full min-h-[2rem]">
       {[...Array(5)].map((_, i) => (
         <div
           key={i}
-          className={`w-2 bg-green-500 rounded-full ${sizeClasses[size]}`}
-          style={{ 
-            animation: 'wave 1.2s ease-in-out infinite',
+          className={`w-[4px] bg-[#00c950] rounded-full animate-wave`}
+          style={{
+            height: size === 'sm' ? '12px' : size === 'lg' ? '32px' : '20px',
             animationDelay: `${i * 0.1}s`
           }}
         ></div>
@@ -56,42 +49,73 @@ const Loader = ({ size = 'md', message = '', fullscreen = false, type = 'spinner
     </div>
   );
 
+  // Render Logic
   const renderLoader = () => {
     switch (type) {
-      case 'pulse':
-        return <PulseLoader />;
-      case 'cross':
-        return <CrossLoader />;
+      case 'pill':
+        return <PillLoader />;
       case 'wave':
         return <WaveLoader />;
+      case 'cross': // Mapping cross to pill for modern pharmacy feel if strictly requested, or just standard spinner
+      case 'spinner':
       default:
         return <SpinnerLoader />;
     }
   };
 
-  if (fullscreen) {
-    return (
-      <div className="fixed inset-0 bg-white bg-opacity-90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-        {renderLoader()}
-        {message && (
-          <p className={`mt-4 text-gray-700 font-medium text-center px-4 ${sizeTextClasses[size]}`}>
-            {message}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center py-4">
+  const Content = () => (
+    <div className="flex flex-col items-center justify-center gap-4">
       {renderLoader()}
       {message && (
-        <p className={`mt-3 text-gray-600 ${sizeTextClasses[size]} text-center`}>
+        <p className={`font-medium tracking-wide text-gray-600 ${currentDim.text} animate-pulse px-4 text-center`}>
           {message}
         </p>
       )}
     </div>
   );
+
+  if (fullscreen) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/60 backdrop-blur-md transition-all duration-300">
+        <div className="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100 flex flex-col items-center">
+          <Content />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center py-4">
+      <Content />
+    </div>
+  );
 };
+
+// Add styles required for custom animations
+const style = document.createElement('style');
+style.innerHTML = `
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
+    50% { transform: scaleY(1); opacity: 1; }
+  }
+  .animate-wave {
+    animation: wave 1s ease-in-out infinite;
+  }
+  @keyframes spin-slow {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+  @keyframes bounce-gentle {
+     0%, 100% { transform: translateY(-5%); }
+     50% { transform: translateY(5%); }
+  }
+  .animate-bounce-gentle {
+    animation: bounce-gentle 2s ease-in-out infinite;
+  }
+`;
+document.head.appendChild(style);
 
 export default Loader;
