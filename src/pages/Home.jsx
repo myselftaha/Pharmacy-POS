@@ -27,7 +27,6 @@ const Home = () => {
     const [currentBillNumber, setCurrentBillNumber] = useState(null);
     const [selectedVoucher, setSelectedVoucher] = useState(null);
     const [medicines, setMedicines] = useState([]);
-    const [supplies, setSupplies] = useState([]);
 
     const { showToast } = useToast();
 
@@ -46,35 +45,65 @@ const Home = () => {
     });
 
 
-    // Fetch medicines from database
-    const fetchMedicines = async () => {
+    // Server-side search function
+    const searchMedicines = async (query, formula, category) => {
+        // If no search criteria, clear results. Exception: searching just by category is allowed if desired, 
+        // but user asked "should no show here we should only search". So we force a query or formula.
+        // If category is 'All', definitively clear. If a category is selected, maybe show items?
+        // User said: "All items are showing... we should only search". Use Strict mode: Must type something.
+
+        // However, usually selecting a specific Category acts as a filter. 
+        // Let's assume: If Category is 'All' AND valid query is empty -> Clear.
+        // If Category is NOT 'All', we can show list (user action).
+        // But user said "no show item... only search".
+        // Let's strictly enforce: If (query is empty AND formula is empty) => Clear list.
+
+        if (!query && !formula) {
+            setMedicines([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/api/medicines`);
+            const params = new URLSearchParams();
+
+            let effectiveQuery = query || '';
+            if (formula) effectiveQuery = formula;
+
+            if (effectiveQuery) params.append('q', effectiveQuery);
+            if (category && category !== 'All') params.append('category', category);
+
+            params.append('limit', '50');
+
+            const response = await fetch(`${API_URL}/api/medicines/search?${params.toString()}`);
             const data = await response.json();
-            setMedicines(data);
+
+            if (data && data.medicines) {
+                setMedicines(data.medicines);
+            } else {
+                setMedicines([]);
+            }
         } catch (error) {
-            console.error('Error fetching medicines:', error);
+            console.error('Error searching medicines:', error);
             setMedicines([]);
         } finally {
             setLoading(false);
         }
     };
 
-    const fetchSupplies = async () => {
-        setLoading(true);
-        try {
-            const response = await fetch(`${API_URL}/api/supplies`);
-            const data = await response.json();
-            setSupplies(data);
-        } catch (error) {
-            console.error('Error fetching supplies:', error);
-        } finally {
-            setLoading(false);
-        }
-    }; useEffect(() => {
-        fetchMedicines();
-        fetchSupplies();
+    // Debounced Search Effect
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            searchMedicines(searchQuery, formulaSearch, activeCategory);
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery, formulaSearch, activeCategory]);
+
+    // Initial Load - Fetch Active Voucher
+    useEffect(() => {
+        fetchActiveVoucher();
     }, []);
 
     // Persist cart items to localStorage
@@ -106,25 +135,7 @@ const Home = () => {
         }
     };
 
-    const filteredMedicines = useMemo(() => {
-        return medicines.filter(med => {
-            const matchesCategory = activeCategory === 'All' || med.category === activeCategory;
-            const matchesSearch = med.name.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesFormula = formulaSearch === '' ||
-                (med.formulaCode && med.formulaCode.toLowerCase().includes(formulaSearch.toLowerCase())) ||
-                (med.genericName && med.genericName.toLowerCase().includes(formulaSearch.toLowerCase())) ||
-                (med.id && med.id.toString().includes(formulaSearch));
-            const inInventory = med.inInventory === true;
-
-            // Check if this medicine has a corresponding Supply record
-            const hasSupplyRecord = supplies.some(supply =>
-                (supply.medicineId && med.id && supply.medicineId.toString() === med.id.toString()) ||
-                (supply.medicineId && med._id && supply.medicineId.toString() === med._id.toString())
-            );
-
-            return matchesCategory && matchesSearch && matchesFormula && inInventory && hasSupplyRecord;
-        });
-    }, [medicines, activeCategory, searchQuery, formulaSearch, supplies]);
+    const filteredMedicines = medicines;
 
 
 
@@ -494,11 +505,7 @@ const Home = () => {
 
     return (
         <div className="flex flex-col h-[calc(100vh-8rem)] overflow-hidden">
-            {loading && (
-                <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-50">
-                    <Loader type="wave" message="Loading products..." size="lg" />
-                </div>
-            )}
+            {/* Removed Global Loader */}
 
             {/* Customer Details Section - Full Width */}
             <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-4">
@@ -624,48 +631,58 @@ const Home = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredMedicines.map((product, index) => {
-                                        const isOutOfStock = product.stock <= 0;
-                                        // Using Custom Green Theme Color
-                                        const themeColor = 'bg-[#00c950]';
-                                        const isSelected = index === selectedProductIndex;
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan="5" className="py-12">
+                                                <div className="flex justify-center items-center">
+                                                    <Loader type="wave" size="md" message="Searching..." />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredMedicines.map((product, index) => {
+                                            const isOutOfStock = product.stock <= 0;
+                                            // Using Custom Green Theme Color
+                                            const themeColor = 'bg-[#00c950]';
+                                            const isSelected = index === selectedProductIndex;
 
-                                        return (
-                                            <tr
-                                                key={product._id || product.id}
-                                                id={`product-row-${index}`}
-                                                onClick={() => !isOutOfStock && addToCart(product)}
-                                                className={`transition-all border-b border-gray-50 last:border-0 
-                                                    ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                                                    ${isSelected ? 'bg-[#00c950]/10 border-[#00c950]/30' : 'hover:bg-gray-50'}
-                                                `}
-                                            >
-                                                <td className="py-4 px-4 text-sm text-gray-700 font-medium relative">
-                                                    {isSelected && (
-                                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00c950] rounded-r"></div>
-                                                    )}
-                                                    {product.name}
-                                                </td>
-                                                <td className="py-4 px-4 text-sm text-gray-600">
-                                                    {product.shelfLocation || 'N/A'}
-                                                </td>
-                                                <td className="py-4 px-4 text-sm text-gray-500 line-through">
-                                                    {product.mrp || '0.00'}
-                                                </td>
-                                                <td className="py-4 px-4 text-sm text-gray-900 font-bold">
-                                                    {product.sellingPrice || product.price}
-                                                </td>
-                                                <td className="py-4 px-4 text-sm font-medium">
-                                                    <span className={isOutOfStock ? 'text-red-600' : 'text-gray-700'}>
-                                                        {isOutOfStock ? '0' : (product.stock / (product.packSize || 1)).toFixed(1)} <span className="text-[10px] text-gray-400 font-normal uppercase">Packs</span>
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                            return (
+                                                <tr
+                                                    key={product._id || product.id}
+                                                    id={`product-row-${index}`}
+                                                    onClick={() => !isOutOfStock && addToCart(product)}
+                                                    className={`transition-all border-b border-gray-50 last:border-0 
+                                                        ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                                                        ${isSelected ? 'bg-[#00c950]/10 border-[#00c950]/30' : 'hover:bg-gray-50'}
+                                                    `}
+                                                >
+                                                    <td className="py-4 px-4 text-sm text-gray-700 font-medium relative">
+                                                        {isSelected && (
+                                                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00c950] rounded-r"></div>
+                                                        )}
+                                                        {product.name}
+                                                    </td>
+                                                    <td className="py-4 px-4 text-sm text-gray-600">
+                                                        {product.shelfLocation || 'N/A'}
+                                                    </td>
+                                                    <td className="py-4 px-4 text-sm text-gray-500 line-through">
+                                                        {product.mrp || '0.00'}
+                                                    </td>
+                                                    <td className="py-4 px-4 text-sm text-gray-900 font-bold">
+                                                        {product.sellingPrice || product.price}
+                                                    </td>
+                                                    <td className="py-4 px-4 text-sm font-medium">
+                                                        <span className={isOutOfStock ? 'text-red-600' : 'text-gray-700'}>
+                                                            {isOutOfStock ? '0' : (product.stock / (product.packSize || 1)).toFixed(1)} <span className="text-[10px] text-gray-400 font-normal uppercase">Packs</span>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
                                 </tbody>
                             </table>
-                            {filteredMedicines.length === 0 && (
+                            {!loading && filteredMedicines.length === 0 && (
                                 <div className="text-center py-12 text-gray-500">
                                     No products found
                                 </div>

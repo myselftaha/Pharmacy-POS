@@ -1064,7 +1064,87 @@ app.get('/api/medicines/low-stock', async (req, res) => {
     }
 });
 
-// Get all medicines
+// Search medicines (Server-side search for POS)
+app.get('/api/medicines/search', async (req, res) => {
+    try {
+        const { q, category, page = 1, limit = 50 } = req.query;
+        let baseQuery = { status: 'Active', inInventory: true }; // Only show sellable items
+
+        if (category && category !== 'All') {
+            baseQuery.category = category;
+        }
+
+        // Strict Filter: Must exist in Supplies
+        const supplyMedicineIds = await Supply.distinct('medicineId');
+
+        // Classify supply IDs
+        const validNumericIds = [];
+        const validObjectIds = [];
+
+        supplyMedicineIds.forEach(sid => {
+            if (!sid) return;
+            const strId = sid.toString();
+            if (!isNaN(strId) && !/^[0-9a-fA-F]{24}$/.test(strId)) {
+                validNumericIds.push(parseInt(strId, 10));
+            } else if (mongoose.Types.ObjectId.isValid(strId)) {
+                validObjectIds.push(new mongoose.Types.ObjectId(strId));
+            }
+        });
+
+        const supplyExistenceFilter = {
+            $or: [
+                { id: { $in: validNumericIds } },
+                { _id: { $in: validObjectIds } }
+            ]
+        };
+
+        let finalQuery = {
+            $and: [
+                baseQuery,
+                supplyExistenceFilter
+            ]
+        };
+
+        if (q) {
+            const searchRegex = new RegExp(q, 'i');
+            const searchConditions = [
+                { name: searchRegex },
+                { genericName: searchRegex },
+                { formulaCode: searchRegex },
+                { sku: searchRegex },
+                { 'barcodes.code': searchRegex }
+            ];
+
+            if (!isNaN(q)) {
+                searchConditions.push({ id: parseInt(q) });
+                searchConditions.push({ boxNumber: searchRegex });
+            }
+
+            finalQuery.$and.push({ $or: searchConditions });
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const [medicines, total] = await Promise.all([
+            Medicine.find(finalQuery)
+                .sort({ name: 1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            Medicine.countDocuments(finalQuery)
+        ]);
+
+        res.json({
+            medicines,
+            total,
+            page: parseInt(page),
+            totalPages: Math.ceil(total / parseInt(limit))
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get all medicines (Legacy / Inventory usage)
 app.get('/api/medicines', async (req, res) => {
     try {
         const medicines = await Medicine.find();
